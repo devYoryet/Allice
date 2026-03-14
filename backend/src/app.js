@@ -1,4 +1,6 @@
-require('dotenv').config();
+// Carga .env desde backend/ para desarrollo local;
+// en Vercel las env vars ya están en process.env y dotenv solo hace no-op.
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

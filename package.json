@@ -2,21 +2,33 @@
   "name": "allice",
   "version": "1.0.0",
   "description": "All ice — App de gestión de visitas y ventas",
+  "prisma": {
+    "schema": "backend/prisma/schema.prisma"
+  },
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "dev:backend": "npm run dev --prefix backend",
+    "dev": "concurrently \"nodemon backend/src/index.js\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "nodemon backend/src/index.js",
     "dev:frontend": "npm run dev --prefix frontend",
-    "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "migrate": "npm run migrate --prefix backend",
-    "migrate:prod": "npm run migrate:prod --prefix backend",
-    "seed": "npm run seed --prefix backend",
-    "generate": "npm run generate --prefix backend",
+    "migrate": "prisma migrate dev",
+    "migrate:prod": "prisma migrate deploy",
+    "seed": "node backend/prisma/seed.js",
+    "generate": "prisma generate",
     "build": "npm run build --prefix frontend",
-    "start": "NODE_ENV=production npm run start --prefix backend",
-    "setup": "npm run install:all && npm run migrate && npm run seed",
-    "vercel-build": "npm install --prefix backend && npx prisma generate --schema=backend/prisma/schema.prisma && npm install --prefix frontend && npm run build --prefix frontend"
+    "start": "node backend/src/index.js",
+    "vercel-build": "prisma generate && npm install --prefix frontend && npm run build --prefix frontend",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.10.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.3",
+    "prisma": "^5.10.0"
   }
 }

@@ -1,5 +1,4 @@
-// Punto de entrada local — solo llama a listen()
-// En Vercel se usa /api/index.js que importa app.js directamente
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const app = require('./app');
 
 const PORT = process.env.PORT || 3001;

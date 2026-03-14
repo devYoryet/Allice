@@ -1,8 +1,6 @@
-// Entry point para Vercel serverless functions
-// Vercel enruta /api/* → este archivo gracias al rewrite en vercel.json
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
-
+// Entry point para Vercel serverless functions.
+// Vercel instala deps en root node_modules, por eso los require de app.js
+// encuentran express, prisma, etc. sin problemas.
 const app = require('../backend/src/app');
 
 module.exports = app;
