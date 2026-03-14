@@ -1,0 +1,21 @@
+{
+  "name": "tere-sales-app",
+  "version": "1.0.0",
+  "description": "App de gestión de visitas y ventas para Tere",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "migrate": "npm run migrate --prefix backend",
+    "migrate:prod": "npm run migrate:prod --prefix backend",
+    "seed": "npm run seed --prefix backend",
+    "generate": "npm run generate --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "start": "NODE_ENV=production npm run start --prefix backend",
+    "setup": "npm run install:all && npm run migrate && npm run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
