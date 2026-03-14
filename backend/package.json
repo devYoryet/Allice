@@ -11,7 +11,8 @@
     "migrate:prod": "prisma migrate deploy",
     "seed": "node prisma/seed.js",
     "db:reset": "prisma migrate reset --force && node prisma/seed.js",
-    "generate": "prisma generate"
+    "generate": "prisma generate",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",

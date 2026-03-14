@@ -1,7 +1,7 @@
 {
-  "name": "tere-sales-app",
+  "name": "allice",
   "version": "1.0.0",
-  "description": "App de gestión de visitas y ventas para Tere",
+  "description": "All ice — App de gestión de visitas y ventas",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "dev:backend": "npm run dev --prefix backend",
@@ -13,7 +13,8 @@
     "generate": "npm run generate --prefix backend",
     "build": "npm run build --prefix frontend",
     "start": "NODE_ENV=production npm run start --prefix backend",
-    "setup": "npm run install:all && npm run migrate && npm run seed"
+    "setup": "npm run install:all && npm run migrate && npm run seed",
+    "vercel-build": "npm install --prefix backend && npx prisma generate --schema=backend/prisma/schema.prisma && npm install --prefix frontend && npm run build --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

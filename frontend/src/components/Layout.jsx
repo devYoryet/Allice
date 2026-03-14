@@ -25,9 +25,9 @@ export default function Layout() {
       <header className="bg-blue-600 text-white sticky top-0 z-40 shadow-md">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🧃</span>
+            <span className="text-xl">🧊</span>
             <div>
-              <h1 className="font-bold text-base leading-tight">Tere Sales</h1>
+              <h1 className="font-bold text-base leading-tight">All ice</h1>
               <p className="text-xs text-blue-200">{user?.name}</p>
             </div>
           </div>

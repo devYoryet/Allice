@@ -29,9 +29,9 @@ export default function LoginPage() {
         {/* Logo / Marca */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-lg mb-4">
-            <span className="text-4xl">🧃</span>
+            <span className="text-4xl">🧊</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">Tere Sales</h1>
+          <h1 className="text-3xl font-bold text-white">All ice</h1>
           <p className="text-blue-200 mt-1">Gestión de visitas y ventas</p>
         </div>
 
