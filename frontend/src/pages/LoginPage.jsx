@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import IceLogo from '../components/IceLogo';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -24,19 +25,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Logo / Marca */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-3xl shadow-lg mb-4">
-            <span className="text-4xl">🧊</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white">All ice</h1>
-          <p className="text-blue-200 mt-1">Gestión de visitas y ventas</p>
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        background: 'linear-gradient(160deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%)',
+      }}
+    >
+      {/* Círculos decorativos de fondo */}
+      <div
+        className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #7dd3fc, transparent)', transform: 'translate(30%, -30%)' }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-80 h-80 rounded-full opacity-10 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #38bdf8, transparent)', transform: 'translate(-40%, 40%)' }}
+      />
+
+      <div className="w-full max-w-sm relative">
+        {/* Logo */}
+        <div className="flex justify-center mb-10">
+          <IceLogo variant="login" />
         </div>
 
-        {/* Card de login */}
-        <div className="bg-white rounded-3xl shadow-xl p-6">
+        {/* Card */}
+        <div
+          className="rounded-3xl shadow-2xl p-7"
+          style={{ background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(10px)' }}
+        >
           <h2 className="text-xl font-bold text-gray-800 mb-6 text-center">Iniciar sesión</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,6 +91,7 @@ export default function LoginPage() {
               type="submit"
               className="btn-primary"
               disabled={loading}
+              style={{ background: 'linear-gradient(135deg, #0369a1, #0284c7)' }}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

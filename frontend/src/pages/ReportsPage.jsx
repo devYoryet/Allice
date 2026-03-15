@@ -2,6 +2,144 @@ import React, { useState, useEffect } from 'react';
 import { reportAPI } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
 
+// ── Constantes del negocio (extraídas de la hoja de costos) ──────────────────
+const META_MIN_KG   = 1800;   // kg/mes mínimo
+const META_MAX_KG   = 2800;   // kg/mes máximo
+const PRECIO_KG     = 400;    // $ por kg
+const COSTOS_FIJOS  = {
+  cuota:  253000,
+  luz:     70000,
+  agua:    10000,
+  bolsas:  72000,
+};
+const TOTAL_COSTOS = Object.values(COSTOS_FIJOS).reduce((a, b) => a + b, 0); // 405 000
+const BREAK_EVEN   = Math.ceil(TOTAL_COSTOS / PRECIO_KG);                    // 1 013 kg
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function MetaTeresa({ kilosVendidos }) {
+  const kg = kilosVendidos || 0;
+
+  // Porcentaje dentro de la barra 0 → META_MAX_KG
+  const pctBE   = clamp((BREAK_EVEN  / META_MAX_KG) * 100, 0, 100);
+  const pctMin  = clamp((META_MIN_KG / META_MAX_KG) * 100, 0, 100);
+  const pctActual = clamp((kg / META_MAX_KG) * 100, 0, 100);
+
+  let estado, estadoColor, estadoBg;
+  if (kg < BREAK_EVEN) {
+    estado = '🔴 Bajo punto de equilibrio'; estadoColor = 'text-red-600'; estadoBg = 'bg-red-50 border-red-200';
+  } else if (kg < META_MIN_KG) {
+    estado = '🟡 En camino a la meta mínima'; estadoColor = 'text-amber-600'; estadoBg = 'bg-amber-50 border-amber-200';
+  } else if (kg < META_MAX_KG) {
+    estado = '🟢 Meta mínima alcanzada'; estadoColor = 'text-green-600'; estadoBg = 'bg-green-50 border-green-200';
+  } else {
+    estado = '🏆 ¡Meta máxima superada!'; estadoColor = 'text-blue-700'; estadoBg = 'bg-blue-50 border-blue-200';
+  }
+
+  const ingresos = kg * PRECIO_KG;
+  const ganancia = ingresos - TOTAL_COSTOS;
+  const faltaMin = Math.max(0, META_MIN_KG - kg);
+  const faltaMax = Math.max(0, META_MAX_KG - kg);
+
+  // Día del mes para proyección
+  const hoy    = new Date();
+  const diasMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const diaActual = hoy.getDate();
+  const ritmoActual = diaActual > 0 ? kg / diaActual : 0;
+  const proyectado  = Math.round(ritmoActual * diasMes);
+
+  return (
+    <div className={`card border ${estadoBg} mb-4`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-bold text-gray-800">Meta mensual All ice</p>
+        <span className={`text-xs font-semibold ${estadoColor}`}>{estado}</span>
+      </div>
+
+      {/* Barra de progreso */}
+      <div className="relative mb-1">
+        <div className="h-4 bg-gray-200 rounded-full overflow-visible relative">
+          {/* Zona rellena */}
+          <div
+            className="h-4 rounded-full transition-all duration-500"
+            style={{
+              width: `${pctActual}%`,
+              background: kg < BREAK_EVEN ? '#ef4444' : kg < META_MIN_KG ? '#f59e0b' : '#22c55e',
+            }}
+          />
+          {/* Marca break-even */}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-red-500"
+            style={{ left: `${pctBE}%` }}
+            title={`Break-even: ${BREAK_EVEN} kg`}
+          />
+          {/* Marca meta mínima */}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-amber-500"
+            style={{ left: `${pctMin}%` }}
+            title={`Meta mín: ${META_MIN_KG} kg`}
+          />
+        </div>
+        {/* Etiquetas bajo la barra */}
+        <div className="flex justify-between text-xs text-gray-400 mt-1 px-0.5">
+          <span>0</span>
+          <span style={{ position: 'absolute', left: `${pctBE}%`, transform: 'translateX(-50%)' }} className="text-red-500 font-medium">
+            {BREAK_EVEN}
+          </span>
+          <span style={{ position: 'absolute', left: `${pctMin}%`, transform: 'translateX(-50%)' }} className="text-amber-500 font-medium">
+            {META_MIN_KG}
+          </span>
+          <span>{META_MAX_KG}</span>
+        </div>
+      </div>
+
+      {/* Stat principal */}
+      <div className="text-center mt-4 mb-3">
+        <p className="text-4xl font-black text-gray-800">{kg.toLocaleString('es-CL')} <span className="text-xl font-semibold text-gray-500">kg</span></p>
+        <p className="text-xs text-gray-400 mt-0.5">vendidos este mes · proyección: <span className="font-semibold text-gray-600">{proyectado.toLocaleString('es-CL')} kg</span></p>
+      </div>
+
+      {/* Grid de indicadores */}
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="bg-white rounded-xl p-2.5 text-center border border-gray-100">
+          <p className="text-sm font-bold text-gray-700">${ingresos.toLocaleString('es-CL')}</p>
+          <p className="text-xs text-gray-400">Ingresos</p>
+        </div>
+        <div className={`rounded-xl p-2.5 text-center border ${ganancia >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+          <p className={`text-sm font-bold ${ganancia >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+            {ganancia >= 0 ? '+' : ''}{ganancia.toLocaleString('es-CL')}
+          </p>
+          <p className="text-xs text-gray-400">Resultado (costos fijos)</p>
+        </div>
+        {faltaMin > 0 && (
+          <div className="bg-amber-50 rounded-xl p-2.5 text-center border border-amber-100">
+            <p className="text-sm font-bold text-amber-700">{faltaMin.toLocaleString('es-CL')} kg</p>
+            <p className="text-xs text-gray-400">Para meta mínima</p>
+          </div>
+        )}
+        {faltaMax > 0 && (
+          <div className="bg-blue-50 rounded-xl p-2.5 text-center border border-blue-100">
+            <p className="text-sm font-bold text-blue-700">{faltaMax.toLocaleString('es-CL')} kg</p>
+            <p className="text-xs text-gray-400">Para meta máxima</p>
+          </div>
+        )}
+      </div>
+
+      {/* Costos fijos desglosados */}
+      <details className="mt-3">
+        <summary className="text-xs text-gray-400 cursor-pointer select-none">Ver costos fijos (${TOTAL_COSTOS.toLocaleString('es-CL')}/mes)</summary>
+        <div className="mt-2 space-y-1">
+          {Object.entries(COSTOS_FIJOS).map(([k, v]) => (
+            <div key={k} className="flex justify-between text-xs text-gray-600">
+              <span className="capitalize">{k}</span>
+              <span>${v.toLocaleString('es-CL')}</span>
+            </div>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 function formatNum(n) {
   return n?.toLocaleString('es-CL', { maximumFractionDigits: 1 }) || '0';
 }
@@ -21,6 +159,14 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState('week');
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [monthKilos, setMonthKilos] = useState(null);
+
+  // Siempre carga el total del mes para la meta
+  useEffect(() => {
+    reportAPI.getSummary('month')
+      .then(({ data }) => setMonthKilos(data.total_kilos))
+      .catch(() => setMonthKilos(0));
+  }, []);
 
   // Comparación
   const [compare, setCompare] = useState({
@@ -64,6 +210,9 @@ export default function ReportsPage() {
   return (
     <div className="page-container">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Reportes</h2>
+
+      {/* Meta Teresa — siempre muestra datos del mes actual */}
+      <MetaTeresa kilosVendidos={monthKilos} />
 
       {/* Selector período */}
       <div className="flex gap-2 mb-4">
