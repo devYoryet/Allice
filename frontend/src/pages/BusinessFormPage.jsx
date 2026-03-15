@@ -20,6 +20,7 @@ export default function BusinessFormPage() {
   const [loadingData, setLoadingData] = useState(isEdit);
   const [error, setError] = useState('');
   const [geoLoading, setGeoLoading] = useState(false);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
@@ -60,6 +61,36 @@ export default function BusinessFormPage() {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const geocodeAddress = async () => {
+    if (!form.direccion.trim()) {
+      setError('Ingresa una dirección primero');
+      return;
+    }
+    setGeocodeLoading(true);
+    setError('');
+    try {
+      const query = encodeURIComponent(`${form.direccion}, Santiago, Chile`);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'es' } }
+      );
+      const data = await res.json();
+      if (!data.length) {
+        setError('No se encontró la dirección. Intenta ser más específico.');
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        lat: parseFloat(data[0].lat).toFixed(6),
+        lng: parseFloat(data[0].lon).toFixed(6),
+      }));
+    } catch {
+      setError('Error al buscar la dirección. Verifica tu conexión.');
+    } finally {
+      setGeocodeLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -115,14 +146,30 @@ export default function BusinessFormPage() {
 
         <div>
           <label className="label">Dirección *</label>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Ej: Av. Principal 123"
-            value={form.direccion}
-            onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-            required
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="input-field flex-1"
+              placeholder="Ej: Av. Principal 123"
+              value={form.direccion}
+              onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+              required
+            />
+            <button
+              type="button"
+              onClick={geocodeAddress}
+              disabled={geocodeLoading}
+              title="Buscar coordenadas de la dirección"
+              className="px-3 py-2 bg-green-500 text-white rounded-xl text-sm font-medium active:bg-green-600 disabled:opacity-50 whitespace-nowrap"
+            >
+              {geocodeLoading ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+              ) : (
+                '📌 Ubicar'
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Pulsa "Ubicar" para obtener las coordenadas automáticamente</p>
         </div>
 
         <div>
