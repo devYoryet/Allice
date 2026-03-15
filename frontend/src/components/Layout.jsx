@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import IceLogo from './IceLogo';
 
 const navItems = [
-  { to: '/',          label: 'Negocios',  icon: '🏪', exact: true },
-  { to: '/ruta',      label: 'Ruta',      icon: '🧭' },
+  { to: '/',          label: 'Inicio',    icon: '🏠', exact: true },
+  { to: '/businesses',label: 'Negocios',  icon: '🏪' },
   { to: '/produccion',label: 'Fábrica',   icon: '🏭' },
-  { to: '/orders',    label: 'Pedidos',   icon: '📦' },
+  { to: '/cobros',    label: 'Cobros',    icon: '💰' },
   { to: '/reports',   label: 'Reportes',  icon: '📊' },
 ];
 

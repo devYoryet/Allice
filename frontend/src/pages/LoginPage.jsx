@@ -10,13 +10,21 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const getRoleRedirect = (user) => {
+    const name = (user?.name || '').toLowerCase();
+    if (name.includes('eduardo')) return '/produccion';
+    if (user?.role === 'admin') return '/reports';
+    // vendedor: Teresa y otros van a ruta
+    return '/ruta';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/');
+      const data = await login(form.email, form.password);
+      navigate(getRoleRedirect(data.user));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al iniciar sesión');
     } finally {

@@ -78,7 +78,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [filter, setFilter] = useState('all'); // all | pending | delivered
+  const [filter, setFilter] = useState('all'); // all | pending | delivered | por_cobrar | pagados
 
   const load = async () => {
     setLoading(true);
@@ -95,8 +95,10 @@ export default function OrdersPage() {
   useEffect(() => { load(); }, []);
 
   const filtered = orders.filter((o) => {
-    if (filter === 'pending') return o.estado_pedido === 'pendiente' || o.estado_pago === 'pendiente';
-    if (filter === 'delivered') return o.estado_pedido === 'entregado';
+    if (filter === 'pending')    return o.estado_pedido === 'pendiente' || o.estado_pago === 'pendiente';
+    if (filter === 'delivered')  return o.estado_pedido === 'entregado';
+    if (filter === 'por_cobrar') return o.estado_pago === 'pendiente';
+    if (filter === 'pagados')    return o.estado_pago === 'pagado';
     return true;
   });
 
@@ -111,9 +113,11 @@ export default function OrdersPage() {
       {/* Filtros */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
         {[
-          { value: 'all', label: 'Todos' },
-          { value: 'pending', label: '⏳ Pendientes' },
-          { value: 'delivered', label: '✅ Entregados' },
+          { value: 'all',       label: 'Todos' },
+          { value: 'por_cobrar',label: '⏳ Por cobrar' },
+          { value: 'pagados',   label: '✅ Pagados' },
+          { value: 'pending',   label: '📦 Pendientes' },
+          { value: 'delivered', label: '🚚 Entregados' },
         ].map((f) => (
           <button
             key={f.value}

@@ -1,6 +1,85 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { produccionAPI } from '../api/client';
+import { produccionAPI, orderAPI } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+// ─── Historial mensual kg producidos vs vendidos ──────────────────────────────
+function HistorialMensual({ lotes }) {
+  const [ordersByMonth, setOrdersByMonth] = useState({});
+
+  useEffect(() => {
+    orderAPI.getAll()
+      .then(({ data }) => {
+        const map = {};
+        (Array.isArray(data) ? data : []).forEach((o) => {
+          const key = o.fecha ? o.fecha.slice(0, 7) : null; // YYYY-MM
+          if (!key) return;
+          map[key] = (map[key] || 0) + o.kilos;
+        });
+        setOrdersByMonth(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Agrupar lotes por mes
+  const producidoByMonth = {};
+  lotes.forEach((l) => {
+    const key = l.fecha_inicio ? l.fecha_inicio.slice(0, 7) : null;
+    if (!key) return;
+    const kg = l.kg_producidos ?? l.kg_programados;
+    producidoByMonth[key] = (producidoByMonth[key] || 0) + kg;
+  });
+
+  // Unir todas las claves y ordenar desc
+  const allKeys = [...new Set([...Object.keys(producidoByMonth), ...Object.keys(ordersByMonth)])].sort().reverse().slice(0, 6);
+
+  if (allKeys.length === 0) return null;
+
+  const maxVal = Math.max(...allKeys.map((k) => Math.max(producidoByMonth[k] || 0, ordersByMonth[k] || 0)), 1);
+
+  const fmtMonth = (key) => {
+    const [y, m] = key.split('-');
+    const names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return `${names[parseInt(m, 10) - 1]} ${y.slice(2)}`;
+  };
+
+  return (
+    <div className="card mt-4">
+      <p className="section-title mb-3">📈 Historial mensual (últimos 6 meses)</p>
+      <div className="flex gap-3 text-xs text-gray-500 mb-3">
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 inline-block" /> Producido</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> Vendido</span>
+      </div>
+      <div className="space-y-3">
+        {allKeys.map((key) => {
+          const prod = producidoByMonth[key] || 0;
+          const vend = ordersByMonth[key] || 0;
+          return (
+            <div key={key}>
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span className="font-medium text-gray-700">{fmtMonth(key)}</span>
+                <span>{prod.toLocaleString('es-CL')} prod · {vend.toLocaleString('es-CL')} vend</span>
+              </div>
+              <div className="space-y-1">
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-3 bg-blue-400 rounded-full transition-all"
+                    style={{ width: `${(prod / maxVal) * 100}%` }}
+                  />
+                </div>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-3 bg-green-400 rounded-full transition-all"
+                    style={{ width: `${(vend / maxVal) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const PRECIO_KG = 400;
 
@@ -340,6 +419,9 @@ export default function ProduccionPage() {
           })}
         </div>
       )}
+
+      {/* Historial mensual */}
+      <HistorialMensual lotes={lotes} />
 
       {/* Modales */}
       {showNuevo && (

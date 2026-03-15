@@ -136,7 +136,7 @@ export default function MapPage() {
                 Ningún negocio tiene ubicación GPS registrada.
               </p>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/businesses')}
                 className="mt-4 text-blue-600 text-sm font-medium underline"
               >
                 Ir a negocios

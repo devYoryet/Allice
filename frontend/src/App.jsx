@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 import BusinessListPage from './pages/BusinessListPage';
 import BusinessDetailPage from './pages/BusinessDetailPage';
 import BusinessFormPage from './pages/BusinessFormPage';
@@ -12,6 +13,7 @@ import ReportsPage from './pages/ReportsPage';
 import OrdersPage from './pages/OrdersPage';
 import RoutePage from './pages/RoutePage';
 import ProduccionPage from './pages/ProduccionPage';
+import CobrosPage from './pages/CobrosPage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -52,16 +54,23 @@ export default function App() {
               </PrivateRoute>
             }
           >
-            <Route index element={<BusinessListPage />} />
+            {/* Dashboard como pantalla de inicio */}
+            <Route index element={<DashboardPage />} />
+
+            {/* Negocios */}
+            <Route path="businesses" element={<BusinessListPage />} />
             <Route path="businesses/new" element={<BusinessFormPage />} />
             <Route path="businesses/:id" element={<BusinessDetailPage />} />
             <Route path="businesses/:id/edit" element={<BusinessFormPage />} />
+
+            {/* Otras vistas */}
             <Route path="map" element={<MapPage />} />
             <Route path="upcoming" element={<UpcomingPage />} />
             <Route path="ruta" element={<RoutePage />} />
             <Route path="produccion" element={<ProduccionPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="cobros" element={<CobrosPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
