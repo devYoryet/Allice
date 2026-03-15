@@ -1,7 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { businessAPI } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+// Fix iconos Leaflet con Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+// Componente auxiliar para mover el mapa cuando cambian las coords
+function MapUpdater({ lat, lng }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([lat, lng], 16);
+  }, [lat, lng, map]);
+  return null;
+}
 
 export default function BusinessFormPage() {
   const navigate = useNavigate();
@@ -20,7 +39,13 @@ export default function BusinessFormPage() {
   const [loadingData, setLoadingData] = useState(isEdit);
   const [error, setError] = useState('');
   const [geoLoading, setGeoLoading] = useState(false);
-  const [geocodeLoading, setGeocodeLoading] = useState(false);
+
+  // Autocomplete
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef(null);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
     if (isEdit) {
@@ -39,6 +64,63 @@ export default function BusinessFormPage() {
         .finally(() => setLoadingData(false));
     }
   }, [id, isEdit]);
+
+  // Cierra dropdown al hacer click fuera
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleDireccionChange = (value) => {
+    setForm((f) => ({ ...f, direccion: value }));
+    setShowSuggestions(false);
+    setSuggestions([]);
+
+    clearTimeout(debounceRef.current);
+    if (value.trim().length < 4) return;
+
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const q = encodeURIComponent(`${value}, Santiago, Chile`);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1&countrycodes=cl`,
+          { headers: { 'Accept-Language': 'es' } }
+        );
+        const data = await res.json();
+        setSuggestions(data);
+        setShowSuggestions(data.length > 0);
+      } catch {
+        // silencioso
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+  };
+
+  const selectSuggestion = (item) => {
+    // Construir dirección legible: calle + número + comuna
+    const a = item.address || {};
+    const parts = [
+      a.road && a.house_number ? `${a.road} ${a.house_number}` : a.road,
+      a.suburb || a.city_district || a.town,
+    ].filter(Boolean);
+    const label = parts.join(', ') || item.display_name.split(',').slice(0, 2).join(',').trim();
+
+    setForm((f) => ({
+      ...f,
+      direccion: label,
+      lat: parseFloat(item.lat).toFixed(6),
+      lng: parseFloat(item.lon).toFixed(6),
+    }));
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const getLocation = () => {
     if (!navigator.geolocation) {
@@ -63,36 +145,6 @@ export default function BusinessFormPage() {
     );
   };
 
-  const geocodeAddress = async () => {
-    if (!form.direccion.trim()) {
-      setError('Ingresa una dirección primero');
-      return;
-    }
-    setGeocodeLoading(true);
-    setError('');
-    try {
-      const query = encodeURIComponent(`${form.direccion}, Santiago, Chile`);
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
-        { headers: { 'Accept-Language': 'es' } }
-      );
-      const data = await res.json();
-      if (!data.length) {
-        setError('No se encontró la dirección. Intenta ser más específico.');
-        return;
-      }
-      setForm((f) => ({
-        ...f,
-        lat: parseFloat(data[0].lat).toFixed(6),
-        lng: parseFloat(data[0].lon).toFixed(6),
-      }));
-    } catch {
-      setError('Error al buscar la dirección. Verifica tu conexión.');
-    } finally {
-      setGeocodeLoading(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.nombre.trim() || !form.direccion.trim() || !form.telefono.trim()) {
@@ -114,6 +166,8 @@ export default function BusinessFormPage() {
       setLoading(false);
     }
   };
+
+  const hasCoords = form.lat && form.lng;
 
   if (loadingData) return <LoadingSpinner />;
 
@@ -144,33 +198,69 @@ export default function BusinessFormPage() {
           />
         </div>
 
-        <div>
+        {/* Dirección con autocomplete */}
+        <div ref={wrapperRef} className="relative">
           <label className="label">Dirección *</label>
-          <div className="flex gap-2">
+          <div className="relative">
             <input
               type="text"
-              className="input-field flex-1"
-              placeholder="Ej: Av. Principal 123"
+              className="input-field pr-8"
+              placeholder="Ej: Nataniel Cox 33"
               value={form.direccion}
-              onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+              onChange={(e) => handleDireccionChange(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              autoComplete="off"
               required
             />
-            <button
-              type="button"
-              onClick={geocodeAddress}
-              disabled={geocodeLoading}
-              title="Buscar coordenadas de la dirección"
-              className="px-3 py-2 bg-green-500 text-white rounded-xl text-sm font-medium active:bg-green-600 disabled:opacity-50 whitespace-nowrap"
-            >
-              {geocodeLoading ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-              ) : (
-                '📌 Ubicar'
-              )}
-            </button>
+            {searchLoading && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            )}
           </div>
-          <p className="text-xs text-gray-400 mt-1">Pulsa "Ubicar" para obtener las coordenadas automáticamente</p>
+          <p className="text-xs text-gray-400 mt-1">Escribe la dirección y selecciona de la lista</p>
+
+          {/* Dropdown de sugerencias */}
+          {showSuggestions && (
+            <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+              {suggestions.map((item) => {
+                const a = item.address || {};
+                const line1 = [a.road, a.house_number].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+                const line2 = [a.suburb || a.city_district, a.city || a.town].filter(Boolean).join(', ');
+                return (
+                  <li
+                    key={item.place_id}
+                    onMouseDown={() => selectSuggestion(item)}
+                    className="px-4 py-3 cursor-pointer hover:bg-blue-50 active:bg-blue-100 border-b border-gray-100 last:border-0"
+                  >
+                    <p className="text-sm font-medium text-gray-800">{line1}</p>
+                    {line2 && <p className="text-xs text-gray-500">{line2}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
+
+        {/* Mapa preview */}
+        {hasCoords && (
+          <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+              <span className="text-xs text-gray-500">📍</span>
+              <span className="text-xs text-gray-600 truncate">{form.direccion}</span>
+              <span className="ml-auto text-xs text-gray-400">{form.lat}, {form.lng}</span>
+            </div>
+            <MapContainer
+              center={[parseFloat(form.lat), parseFloat(form.lng)]}
+              zoom={16}
+              style={{ height: '180px', width: '100%' }}
+              zoomControl={false}
+              attributionControl={false}
+            >
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <Marker position={[parseFloat(form.lat), parseFloat(form.lng)]} />
+              <MapUpdater lat={parseFloat(form.lat)} lng={parseFloat(form.lng)} />
+            </MapContainer>
+          </div>
+        )}
 
         <div>
           <label className="label">Persona a cargo</label>
@@ -195,14 +285,14 @@ export default function BusinessFormPage() {
           />
         </div>
 
-        {/* Geolocalización */}
+        {/* GPS como respaldo */}
         <div className="card bg-blue-50 border-blue-100">
-          <p className="text-sm font-medium text-blue-800 mb-3">📍 Ubicación GPS</p>
+          <p className="text-sm font-medium text-blue-800 mb-3">📍 Usar mi ubicación actual (respaldo)</p>
           <button
             type="button"
             onClick={getLocation}
             disabled={geoLoading}
-            className="btn-primary bg-blue-500 active:bg-blue-600 mb-3"
+            className="btn-primary bg-blue-500 active:bg-blue-600"
           >
             {geoLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -210,38 +300,9 @@ export default function BusinessFormPage() {
                 Obteniendo ubicación...
               </span>
             ) : (
-              '📍 Usar mi ubicación actual'
+              '📍 Capturar GPS'
             )}
           </button>
-          {form.lat && form.lng && (
-            <p className="text-xs text-blue-600 text-center">
-              ✅ Lat: {form.lat}, Lng: {form.lng}
-            </p>
-          )}
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <div>
-              <label className="label text-xs">Latitud</label>
-              <input
-                type="number"
-                step="any"
-                className="input-field text-sm py-2"
-                placeholder="-33.456"
-                value={form.lat}
-                onChange={(e) => setForm({ ...form, lat: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label text-xs">Longitud</label>
-              <input
-                type="number"
-                step="any"
-                className="input-field text-sm py-2"
-                placeholder="-70.648"
-                value={form.lng}
-                onChange={(e) => setForm({ ...form, lng: e.target.value })}
-              />
-            </div>
-          </div>
         </div>
 
         {error && (
