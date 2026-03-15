@@ -67,7 +67,7 @@ export default function RoutePage() {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState('pendientes'); // 'pendientes' | 'todos'
+  const [filtro, setFiltro] = useState('todos'); // 'pendientes' | 'todos'
 
   // Configuración
   const [horaInicio, setHoraInicio] = useState(() => {
@@ -190,6 +190,35 @@ export default function RoutePage() {
         ))}
       </div>
 
+      {/* Seleccionar todos / ninguno */}
+      {negociosMostrados.length > 0 && (
+        <div className="flex justify-between items-center mb-2">
+          <p className="text-xs text-gray-500">
+            {seleccionados.size} de {negociosMostrados.length} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const todos = new Set(negociosMostrados.filter(b => b.lat && b.lng).map(b => b.id));
+                setSeleccionados(todos);
+                setRuta(null);
+              }}
+              className="text-xs text-blue-600 font-medium px-3 py-1 bg-blue-50 rounded-lg active:bg-blue-100"
+            >
+              Todos con GPS
+            </button>
+            {seleccionados.size > 0 && (
+              <button
+                onClick={() => { setSeleccionados(new Set()); setRuta(null); }}
+                className="text-xs text-gray-500 font-medium px-3 py-1 bg-gray-100 rounded-lg active:bg-gray-200"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Lista de negocios */}
       <div className="space-y-2 mb-4">
         {negociosMostrados.length === 0 ? (
@@ -260,32 +289,53 @@ export default function RoutePage() {
 
           {/* ── Navegar con app externa ── */}
           {ruta.paradas.length > 0 && (() => {
-            // Google Maps multi-parada: /dir/lat1,lng1/lat2,lng2/...
-            const gmapsUrl =
-              'https://www.google.com/maps/dir/' +
-              ruta.paradas.map((p) => `${p.lat},${p.lng}`).join('/');
-            // Waze sólo soporta 1 destino a la vez — abrimos la primera parada
-            const wazeUrl = `https://waze.com/ul?ll=${ruta.paradas[0].lat},${ruta.paradas[0].lng}&navigate=yes`;
+            // Google Maps multi-parada con waypoints (formato oficial ?api=1)
+            const origin      = ruta.paradas[0];
+            const destination = ruta.paradas[ruta.paradas.length - 1];
+            const waypoints   = ruta.paradas.slice(1, -1).map((p) => `${p.lat},${p.lng}`).join('|');
+            const gmapsUrl    = 'https://www.google.com/maps/dir/?api=1'
+              + `&origin=${origin.lat},${origin.lng}`
+              + `&destination=${destination.lat},${destination.lng}`
+              + (waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : '')
+              + '&travelmode=driving';
 
             return (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                {/* Google Maps — ruta completa con todas las paradas */}
                 <a
                   href={gmapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white border-2 border-blue-200 text-blue-700 font-semibold text-sm active:bg-blue-50"
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white font-semibold text-sm active:bg-blue-700 w-full"
                 >
-                  <img src="https://maps.google.com/mapfiles/ms/icons/blue-dot.png" alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />
-                  Google Maps
+                  🗺️ Abrir ruta completa en Google Maps ({ruta.paradas.length} paradas)
                 </a>
-                <a
-                  href={wazeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white border-2 border-blue-200 text-blue-700 font-semibold text-sm active:bg-blue-50"
-                >
-                  🚗 Waze
-                </a>
+
+                {/* Waze: Waze no soporta multi-parada por URL — se abren de a una en orden */}
+                <div className="card bg-sky-50 border-sky-200">
+                  <p className="text-xs font-semibold text-sky-700 mb-2">
+                    🚗 Waze — navega parada por parada en orden
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {ruta.paradas.map((p, i) => (
+                      <a
+                        key={p.id}
+                        href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 text-white text-xs font-bold rounded-xl active:bg-sky-600"
+                      >
+                        <span className="w-4 h-4 rounded-full bg-white text-sky-600 flex items-center justify-center text-xs font-black leading-none">
+                          {i + 1}
+                        </span>
+                        {p.nombre.split(' ')[0]}
+                      </a>
+                    ))}
+                  </div>
+                  <p className="text-xs text-sky-600 mt-2">
+                    Toca cada número en orden. Waze no permite abrir toda la ruta de una vez por URL.
+                  </p>
+                </div>
               </div>
             );
           })()}
