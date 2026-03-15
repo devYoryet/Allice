@@ -4,11 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import IceLogo from './IceLogo';
 
 const navItems = [
-  { to: '/',        label: 'Negocios', icon: '🏪', exact: true },
-  { to: '/upcoming',label: 'Visitas',  icon: '📅' },
-  { to: '/ruta',    label: 'Ruta',     icon: '🧭' },
-  { to: '/map',     label: 'Mapa',     icon: '🗺️' },
-  { to: '/reports', label: 'Reportes', icon: '📊' },
+  { to: '/',          label: 'Negocios',  icon: '🏪', exact: true },
+  { to: '/ruta',      label: 'Ruta',      icon: '🧭' },
+  { to: '/produccion',label: 'Fábrica',   icon: '🏭' },
+  { to: '/orders',    label: 'Pedidos',   icon: '📦' },
+  { to: '/reports',   label: 'Reportes',  icon: '📊' },
 ];
 
 export default function Layout() {

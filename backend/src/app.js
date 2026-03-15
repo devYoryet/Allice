@@ -5,11 +5,12 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
-const authRoutes = require('./routes/auth');
-const businessRoutes = require('./routes/businesses');
-const visitRoutes = require('./routes/visits');
-const orderRoutes = require('./routes/orders');
-const reportRoutes = require('./routes/reports');
+const authRoutes      = require('./routes/auth');
+const businessRoutes  = require('./routes/businesses');
+const visitRoutes     = require('./routes/visits');
+const orderRoutes     = require('./routes/orders');
+const reportRoutes    = require('./routes/reports');
+const produccionRoutes = require('./routes/produccion');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/businesses', businessRoutes);
 app.use('/api/businesses/:businessId/visits', visitRoutes);
 app.use('/api/businesses/:businessId/orders', orderRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/produccion', produccionRoutes);
 
 // Rutas de pedidos globales
 const { getAll: getAllOrders, update: updateOrder } = require('./controllers/orderController');

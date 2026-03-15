@@ -41,12 +41,29 @@ const getSummary = async (req, res) => {
       .sort((a, b) => b.kilos - a.kilos)
       .slice(0, 10);
 
+    const totalNeto  = orders.reduce((sum, o) => sum + (o.monto_neto  || o.kilos * 400), 0);
+    const totalTotal = orders.reduce((sum, o) => sum + (o.monto_total || o.kilos * 400), 0);
+    const pendientes = orders.filter(o => o.estado_pago === 'pendiente').reduce((s,o) => s + (o.monto_total || o.kilos * 400), 0);
+
+    // Tasa de conversión: visitas con venta / total visitas (en el período)
+    const visitas = await prisma.visitLog.findMany({
+      where: { fecha: { gte: start, lte: now } },
+    });
+    const conversionRate = visitas.length > 0
+      ? Math.round((visitas.filter(v => v.tipo === 'visita_con_venta').length / visitas.length) * 100)
+      : null;
+
     res.json({
       periodo: period || 'week',
       desde: start.toISOString(),
       hasta: now.toISOString(),
-      total_kilos: totalKilos,
-      total_pedidos: totalPedidos,
+      total_kilos:    totalKilos,
+      total_pedidos:  totalPedidos,
+      total_neto:     Math.round(totalNeto),
+      total_ingresos: Math.round(totalTotal),
+      cobro_pendiente: Math.round(pendientes),
+      conversion_rate: conversionRate,
+      total_visitas:  visitas.length,
       top_negocios: topNegocios,
     });
   } catch (error) {

@@ -21,12 +21,17 @@ function whatsappLink(phone, name) {
 
 // Modal para registrar visita
 function VisitModal({ businessId, businessName, onClose, onSuccess }) {
-  const [tipo, setTipo] = useState('visita_sin_venta');
+  const [tipo, setTipo]         = useState('visita_sin_venta');
   const [comentario, setComentario] = useState('');
-  const [kilos, setKilos] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [kilos, setKilos]       = useState('');
+  const [precioKg, setPrecioKg] = useState('400');
+  const [conIva, setConIva]     = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
   const withSale = tipo === 'visita_con_venta';
+
+  const montoNeto  = withSale && kilos ? Math.round(parseFloat(kilos) * parseFloat(precioKg || 400)) : 0;
+  const montoTotal = conIva ? Math.round(montoNeto * 1.19) : montoNeto;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +40,12 @@ function VisitModal({ businessId, businessName, onClose, onSuccess }) {
     try {
       await visitAPI.create(businessId, { tipo, comentario });
       if (withSale && kilos) {
-        await orderAPI.create(businessId, { kilos: parseFloat(kilos), comentario });
+        await orderAPI.create(businessId, {
+          kilos: parseFloat(kilos),
+          precio_kg: parseFloat(precioKg || 400),
+          con_iva: conIva,
+          comentario,
+        });
       }
       onSuccess();
     } catch (err) {
@@ -87,19 +97,52 @@ function VisitModal({ businessId, businessName, onClose, onSuccess }) {
           </div>
 
           {withSale && (
-            <div>
-              <label className="label">Kilos vendidos</label>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                className="input-field"
-                placeholder="Ej: 50"
-                value={kilos}
-                onChange={(e) => setKilos(e.target.value)}
-                required={withSale}
-              />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Kilos vendidos</label>
+                  <input type="number" min="0" step="0.1" className="input-field"
+                    placeholder="50" value={kilos}
+                    onChange={(e) => setKilos(e.target.value)} required={withSale} />
+                </div>
+                <div>
+                  <label className="label">Precio por kg ($)</label>
+                  <input type="number" min="1" className="input-field"
+                    value={precioKg}
+                    onChange={(e) => setPrecioKg(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Con factura (IVA 19%)</p>
+                  <p className="text-xs text-gray-400">Sin factura = precio directo</p>
+                </div>
+                <button type="button" onClick={() => setConIva(!conIva)}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${conIva ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${conIva ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+
+              {kilos && (
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Monto neto:</span>
+                    <span className="font-medium">${montoNeto.toLocaleString('es-CL')}</span>
+                  </div>
+                  {conIva && (
+                    <div className="flex justify-between text-gray-600">
+                      <span>IVA (19%):</span>
+                      <span className="font-medium">${(montoTotal - montoNeto).toLocaleString('es-CL')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-gray-800 border-t border-blue-100 pt-1 mt-1">
+                    <span>Total a cobrar:</span>
+                    <span className="text-blue-700">${montoTotal.toLocaleString('es-CL')}</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div>

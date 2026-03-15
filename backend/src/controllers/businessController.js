@@ -8,8 +8,8 @@ const getAll = async (req, res) => {
     const where = q
       ? {
           OR: [
-            { nombre: { contains: q } },
-            { direccion: { contains: q } },
+            { nombre:    { contains: q, mode: 'insensitive' } },
+            { direccion: { contains: q, mode: 'insensitive' } },
           ],
         }
       : {};

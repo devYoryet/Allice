@@ -47,16 +47,26 @@ const create = async (req, res) => {
       return res.status(404).json({ error: 'Negocio no encontrado' });
     }
 
+    const kg       = parseFloat(kilos);
+    const precioKg = req.body.precio_kg ? parseFloat(req.body.precio_kg) : 400;
+    const conIva   = req.body.con_iva === true || req.body.con_iva === 'true';
+    const montoNeto  = Math.round(kg * precioKg);
+    const montoTotal = conIva ? Math.round(montoNeto * 1.19) : montoNeto;
+
     const order = await prisma.order.create({
       data: {
-        business_id: parseInt(businessId),
-        user_id: req.user.id,
-        kilos: parseFloat(kilos),
-        estado_pedido: 'pendiente',
-        estado_pago: 'pendiente',
-        estado_factura: 'sin_factura',
-        comentario: comentario || null,
-        fecha: fecha ? new Date(fecha) : new Date(),
+        business_id:    parseInt(businessId),
+        user_id:        req.user.id,
+        kilos:          kg,
+        precio_kg:      precioKg,
+        con_iva:        conIva,
+        monto_neto:     montoNeto,
+        monto_total:    montoTotal,
+        estado_pedido:  'pendiente',
+        estado_pago:    'pendiente',
+        estado_factura: conIva ? 'facturado' : 'sin_factura',
+        comentario:     comentario || null,
+        fecha:          fecha ? new Date(fecha) : new Date(),
       },
       include: { user: { select: { id: true, name: true } } },
     });

@@ -100,7 +100,9 @@ export default function OrdersPage() {
     return true;
   });
 
-  const totalKilos = filtered.reduce((sum, o) => sum + o.kilos, 0);
+  const totalKilos    = filtered.reduce((sum, o) => sum + o.kilos, 0);
+  const totalIngresos = filtered.reduce((sum, o) => sum + (o.monto_total || o.kilos * 400), 0);
+  const porCobrar     = filtered.filter(o => o.estado_pago === 'pendiente').reduce((sum, o) => sum + (o.monto_total || o.kilos * 400), 0);
 
   return (
     <div className="page-container">
@@ -134,15 +136,19 @@ export default function OrdersPage() {
           {/* Totales */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="card text-center">
-              <p className="text-2xl font-bold text-blue-600">{filtered.length}</p>
-              <p className="text-xs text-gray-500">Pedidos</p>
+              <p className="text-2xl font-bold text-blue-600">{totalKilos.toLocaleString('es-CL', { maximumFractionDigits: 1 })} kg</p>
+              <p className="text-xs text-gray-500">{filtered.length} pedidos</p>
             </div>
             <div className="card text-center">
-              <p className="text-2xl font-bold text-green-600">
-                {totalKilos.toLocaleString('es-CL', { maximumFractionDigits: 1 })} kg
-              </p>
-              <p className="text-xs text-gray-500">Total kilos</p>
+              <p className="text-2xl font-bold text-green-600">${totalIngresos.toLocaleString('es-CL')}</p>
+              <p className="text-xs text-gray-500">Total ingresos</p>
             </div>
+            {porCobrar > 0 && (
+              <div className="card text-center col-span-2 bg-amber-50 border-amber-100">
+                <p className="text-xl font-bold text-amber-600">${porCobrar.toLocaleString('es-CL')}</p>
+                <p className="text-xs text-amber-700">Por cobrar (pago pendiente)</p>
+              </div>
+            )}
           </div>
 
           {filtered.length === 0 ? (
@@ -165,6 +171,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-gray-800">{o.kilos} kg</p>
+                      <p className="text-sm font-semibold text-green-700">${(o.monto_total || o.kilos * 400).toLocaleString('es-CL')}</p>
                       <button
                         onClick={() => setSelectedOrder(o)}
                         className="text-xs text-blue-600 font-medium mt-1 active:text-blue-800"

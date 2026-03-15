@@ -11,6 +11,7 @@ import UpcomingPage from './pages/UpcomingPage';
 import ReportsPage from './pages/ReportsPage';
 import OrdersPage from './pages/OrdersPage';
 import RoutePage from './pages/RoutePage';
+import ProduccionPage from './pages/ProduccionPage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="map" element={<MapPage />} />
             <Route path="upcoming" element={<UpcomingPage />} />
             <Route path="ruta" element={<RoutePage />} />
+            <Route path="produccion" element={<ProduccionPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="orders" element={<OrdersPage />} />
           </Route>

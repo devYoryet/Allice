@@ -64,4 +64,12 @@ export const reportAPI = {
     api.get('/reports/compare', { params: { desde1, hasta1, desde2, hasta2 } }),
 };
 
+// ===================== PRODUCCIÓN =====================
+export const produccionAPI = {
+  getAll:  ()         => api.get('/produccion'),
+  create:  (data)     => api.post('/produccion', data),
+  update:  (id, data) => api.put(`/produccion/${id}`, data),
+  remove:  (id)       => api.delete(`/produccion/${id}`),
+};
+
 export default api;

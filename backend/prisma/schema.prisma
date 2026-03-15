@@ -5,21 +5,21 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // Para Neon (serverless PostgreSQL) se recomienda usar directUrl
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            Int          @id @default(autoincrement())
+  id            Int               @id @default(autoincrement())
   name          String
-  email         String       @unique
+  email         String            @unique
   password_hash String
-  role          String       @default("vendedor") // admin | vendedor
-  created_at    DateTime     @default(now())
+  role          String            @default("vendedor") // admin | vendedor | produccion
+  created_at    DateTime          @default(now())
 
   businesses    Business[]
   visit_logs    VisitLog[]
   orders        Order[]
+  lotes         LoteProduccion[]
 }
 
 model Business {
@@ -59,6 +59,10 @@ model Order {
   user_id         Int
   fecha           DateTime  @default(now())
   kilos           Float
+  precio_kg       Float     @default(400)   // precio por kilo en CLP
+  con_iva         Boolean   @default(false) // true = facturado con IVA 19%
+  monto_neto      Float?                    // kilos × precio_kg
+  monto_total     Float?                    // monto_neto × 1.19 si con_iva, else monto_neto
   estado_pedido   String    @default("pendiente")   // pendiente | entregado
   estado_pago     String    @default("pendiente")   // pendiente | pagado
   estado_factura  String    @default("sin_factura") // sin_factura | facturado
@@ -68,4 +72,22 @@ model Order {
 
   business        Business  @relation(fields: [business_id], references: [id], onDelete: Cascade)
   user            User      @relation(fields: [user_id], references: [id])
+}
+
+// Módulo de producción (Eduardo)
+model LoteProduccion {
+  id                Int       @id @default(autoincrement())
+  fecha_inicio      DateTime  @default(now())
+  kg_programados    Float                       // kg que se planea producir
+  kg_producidos     Float?                      // kg reales (puede diferir)
+  bolsas            Int?                        // bolsas usadas
+  estado            String    @default("produciendo") // produciendo | congelando | disponible | agotado
+  horas_congelado   Int       @default(12)      // horas en congeladora (editable)
+  fecha_disponible  DateTime?                   // calculado: inicio_congelado + horas_congelado
+  notas             String?
+  creado_por        Int
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  user              User      @relation(fields: [creado_por], references: [id])
 }
