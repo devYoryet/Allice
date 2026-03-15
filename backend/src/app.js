@@ -16,13 +16,18 @@ const app = express();
 // Middlewares globales
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
   process.env.FRONTEND_URL,
-].filter(Boolean);
+].filter(Boolean).map(o => o.replace(/\/$/, '')); // quita trailing slash
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Permite requests sin origin (Postman, curl) y origins en la lista
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    // Sin origin: Postman, curl, SSR → OK
+    if (!origin) return cb(null, true);
+    // URL exacta en la lista
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    // Cualquier subdominio de vercel.app (previews, producción)
+    if (/^https:\/\/[a-z0-9-]+(\.vercel\.app)$/.test(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
