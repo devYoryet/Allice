@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import IceLogo from './IceLogo';
+import OfflineBanner from './OfflineBanner';
 
 const navItems = [
   { to: '/',          label: 'Inicio',    icon: '🏠', exact: true },
@@ -22,6 +23,9 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Banner offline/sincronizando */}
+      <OfflineBanner />
+
       {/* Header */}
       <header
         className="text-white sticky top-0 z-40 shadow-md"

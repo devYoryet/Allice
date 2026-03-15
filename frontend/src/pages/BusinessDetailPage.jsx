@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { businessAPI, visitAPI, orderAPI } from '../api/client';
 import { VisitaBadge, PedidoBadge, PagoBadge, FacturaBadge } from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { withQueue } from '../utils/offlineQueue';
 
 function formatDate(d) {
   if (!d) return '—';
@@ -38,16 +39,31 @@ function VisitModal({ businessId, businessName, onClose, onSuccess }) {
     setError('');
     setLoading(true);
     try {
-      await visitAPI.create(businessId, { tipo, comentario });
+      const visitData = { tipo, comentario };
+      const { queued: visitQueued } = await withQueue(
+        () => visitAPI.create(businessId, visitData),
+        { method: 'POST', url: `/businesses/${businessId}/visits`, data: visitData, description: `Visita a ${businessName}` }
+      );
+
       if (withSale && kilos) {
-        await orderAPI.create(businessId, {
+        const orderData = {
           kilos: parseFloat(kilos),
           precio_kg: parseFloat(precioKg || 400),
           con_iva: conIva,
           comentario,
-        });
+        };
+        await withQueue(
+          () => orderAPI.create(businessId, orderData),
+          { method: 'POST', url: `/businesses/${businessId}/orders`, data: orderData, description: `Pedido en ${businessName}` }
+        );
       }
-      onSuccess();
+
+      if (visitQueued) {
+        setError('Sin conexión: visita guardada, se enviará al reconectarte.');
+        setTimeout(onSuccess, 1500);
+      } else {
+        onSuccess();
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Error al registrar');
     } finally {
@@ -182,8 +198,12 @@ function OrderUpdateModal({ order, onClose, onSuccess }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await orderAPI.update(order.id, form);
-      onSuccess();
+      const { queued } = await withQueue(
+        () => orderAPI.update(order.id, form),
+        { method: 'PUT', url: `/orders/${order.id}`, data: form, description: `Actualizar pedido #${order.id}` }
+      );
+      if (queued) setTimeout(onSuccess, 800);
+      else onSuccess();
     } catch {
       setLoading(false);
     }

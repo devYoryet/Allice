@@ -258,8 +258,37 @@ export default function RoutePage() {
             </button>
           </div>
 
-          {/* Resumen */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* ── Navegar con app externa ── */}
+          {ruta.paradas.length > 0 && (() => {
+            // Google Maps multi-parada: /dir/lat1,lng1/lat2,lng2/...
+            const gmapsUrl =
+              'https://www.google.com/maps/dir/' +
+              ruta.paradas.map((p) => `${p.lat},${p.lng}`).join('/');
+            // Waze sólo soporta 1 destino a la vez — abrimos la primera parada
+            const wazeUrl = `https://waze.com/ul?ll=${ruta.paradas[0].lat},${ruta.paradas[0].lng}&navigate=yes`;
+
+            return (
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={gmapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white border-2 border-blue-200 text-blue-700 font-semibold text-sm active:bg-blue-50"
+                >
+                  <img src="https://maps.google.com/mapfiles/ms/icons/blue-dot.png" alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />
+                  Google Maps
+                </a>
+                <a
+                  href={wazeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white border-2 border-blue-200 text-blue-700 font-semibold text-sm active:bg-blue-50"
+                >
+                  🚗 Waze
+                </a>
+              </div>
+            );
+          })()}
             <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
               <p className="text-xl font-bold text-blue-600">{ruta.paradas.length}</p>
               <p className="text-xs text-gray-500">paradas</p>
@@ -322,11 +351,33 @@ export default function RoutePage() {
                       <p className="text-xs text-gray-400">sale {p.salida}</p>
                     </div>
                   </div>
-                  {i < ruta.paradas.length - 1 && (
-                    <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
-                      <span>🚗</span> {minTraslado} min de traslado al siguiente
-                    </p>
-                  )}
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                    {i < ruta.paradas.length - 1 ? (
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        <span>🚗</span> {minTraslado} min al siguiente
+                      </p>
+                    ) : <span />}
+                    <div className="flex gap-1.5">
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-700 font-medium"
+                      >
+                        Maps
+                      </a>
+                      <a
+                        href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-700 font-medium"
+                      >
+                        Waze
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

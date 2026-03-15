@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { orderAPI } from '../api/client';
 import { PedidoBadge, FacturaBadge } from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { withQueue } from '../utils/offlineQueue';
 
 function formatDate(d) {
   if (!d) return '—';
@@ -32,11 +33,24 @@ export default function CobrosPage() {
 
   const markPaid = async (order) => {
     setMarking(order.id);
+    // Actualización optimista inmediata — visible aunque no haya red
+    setOrders((prev) =>
+      prev.map((o) => (o.id === order.id ? { ...o, estado_pago: 'pagado' } : o))
+    );
     try {
-      await orderAPI.update(order.id, { estado_pago: 'pagado' });
-      // Actualiza localmente sin recargar toda la lista
+      await withQueue(
+        () => orderAPI.update(order.id, { estado_pago: 'pagado' }),
+        {
+          method: 'PUT',
+          url: `/orders/${order.id}`,
+          data: { estado_pago: 'pagado' },
+          description: `Cobro de ${order.business?.nombre || 'pedido #' + order.id}`,
+        }
+      );
+    } catch {
+      // Error de servidor: revertir optimismo
       setOrders((prev) =>
-        prev.map((o) => (o.id === order.id ? { ...o, estado_pago: 'pagado' } : o))
+        prev.map((o) => (o.id === order.id ? { ...o, estado_pago: 'pendiente' } : o))
       );
     } finally {
       setMarking(null);
