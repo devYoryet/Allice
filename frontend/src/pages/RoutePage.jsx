@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-import { businessAPI } from '../api/client';
+import { businessAPI, orderAPI } from '../api/client';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Fix iconos Leaflet
@@ -81,18 +81,34 @@ export default function RoutePage() {
   const [seleccionados, setSeleccionados] = useState(new Set());
   const [ruta, setRuta] = useState(null); // array ordenado con tiempos
 
+  // kg pendientes de entrega por negocio: { businessId: totalKg }
+  const [kgPorNegocio, setKgPorNegocio] = useState({});
+
   useEffect(() => {
-    businessAPI.getAll()
-      .then(({ data }) => setBusinesses(data))
+    Promise.all([
+      businessAPI.getAll(),
+      orderAPI.getAll(),
+    ])
+      .then(([{ data: bizData }, { data: ordData }]) => {
+        setBusinesses(bizData);
+        // Sumar kilos de pedidos pendientes por negocio
+        const mapa = {};
+        (Array.isArray(ordData) ? ordData : [])
+          .filter((o) => o.estado_pedido === 'pendiente')
+          .forEach((o) => {
+            mapa[o.business_id] = (mapa[o.business_id] || 0) + o.kilos;
+          });
+        setKgPorNegocio(mapa);
+      })
       .catch(() => setBusinesses([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const negociosMostrados = businesses.filter((b) =>
-    filtro === 'pendientes'
-      ? b.estado_visita === 'no_visitado'
-      : true
-  );
+  const negociosMostrados = businesses.filter((b) => {
+    if (filtro === 'pendientes')  return b.estado_visita === 'no_visitado';
+    if (filtro === 'con_pedido')  return kgPorNegocio[b.id] > 0;
+    return true;
+  });
 
   const toggleSeleccion = (id) => {
     setSeleccionados((prev) => {
@@ -175,17 +191,31 @@ export default function RoutePage() {
       {/* Filtro */}
       <div className="flex gap-2 mb-3">
         {[
-          { value: 'pendientes', label: `Sin visitar (${businesses.filter(b => b.estado_visita === 'no_visitado').length})` },
-          { value: 'todos',      label: `Todos (${businesses.length})` },
+          {
+            value: 'con_pedido',
+            label: `Con pedido (${Object.keys(kgPorNegocio).length})`,
+            badge: Object.keys(kgPorNegocio).length > 0,
+          },
+          {
+            value: 'pendientes',
+            label: `Sin visitar (${businesses.filter(b => b.estado_visita === 'no_visitado').length})`,
+          },
+          {
+            value: 'todos',
+            label: `Todos (${businesses.length})`,
+          },
         ].map((f) => (
           <button
             key={f.value}
             onClick={() => setFiltro(f.value)}
-            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+            className={`flex-1 py-2 rounded-xl text-xs font-medium transition-colors relative ${
               filtro === f.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
             }`}
           >
             {f.label}
+            {f.badge && filtro !== f.value && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500" />
+            )}
           </button>
         ))}
       </div>
@@ -223,7 +253,9 @@ export default function RoutePage() {
       <div className="space-y-2 mb-4">
         {negociosMostrados.length === 0 ? (
           <div className="text-center py-8 text-gray-400 text-sm">
-            {filtro === 'pendientes' ? 'Todos los negocios ya fueron visitados 🎉' : 'No hay negocios registrados'}
+            {filtro === 'con_pedido'  ? 'No hay pedidos pendientes de entrega' :
+             filtro === 'pendientes'  ? 'Todos los negocios ya fueron visitados 🎉' :
+             'No hay negocios registrados'}
           </div>
         ) : (
           negociosMostrados.map((b) => {
@@ -253,6 +285,11 @@ export default function RoutePage() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${est.color}`}>
                     {est.text}
                   </span>
+                  {kgPorNegocio[b.id] > 0 && (
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">
+                      {kgPorNegocio[b.id]} kg ⏳
+                    </span>
+                  )}
                   {!b.lat && <span className="text-xs text-orange-500">Sin GPS</span>}
                 </div>
               </div>
@@ -286,6 +323,38 @@ export default function RoutePage() {
               ↺ Recalcular
             </button>
           </div>
+
+          {/* ── Estadísticas ruta ── */}
+          {(() => {
+            const totalKgRuta = ruta.paradas.reduce((s, p) => s + (kgPorNegocio[p.id] || 0), 0);
+            return (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+                  <p className="text-xl font-bold text-blue-600">{ruta.paradas.length}</p>
+                  <p className="text-xs text-gray-500">paradas</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+                  <p className="text-xl font-bold text-blue-600">
+                    {Math.floor(ruta.totalMin / 60)}h {ruta.totalMin % 60}m
+                  </p>
+                  <p className="text-xs text-gray-500">duración</p>
+                </div>
+                {totalKgRuta > 0 ? (
+                  <div className="bg-orange-50 rounded-xl border border-orange-200 p-3 text-center">
+                    <p className="text-xl font-bold text-orange-600">{totalKgRuta}</p>
+                    <p className="text-xs text-orange-500">kg a entregar</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
+                    <p className="text-xl font-bold text-blue-600">
+                      {ruta.paradas.length > 0 ? ruta.paradas[ruta.paradas.length - 1].salida : '--'}
+                    </p>
+                    <p className="text-xs text-gray-500">fin estimado</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Navegar con app externa ── */}
           {ruta.paradas.length > 0 && (() => {
@@ -339,21 +408,6 @@ export default function RoutePage() {
               </div>
             );
           })()}
-            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-              <p className="text-xl font-bold text-blue-600">{ruta.paradas.length}</p>
-              <p className="text-xs text-gray-500">paradas</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-              <p className="text-xl font-bold text-blue-600">{Math.floor(ruta.totalMin / 60)}h {ruta.totalMin % 60}m</p>
-              <p className="text-xs text-gray-500">duración</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-3 text-center">
-              <p className="text-xl font-bold text-blue-600">
-                {ruta.paradas.length > 0 ? ruta.paradas[ruta.paradas.length - 1].salida : '--'}
-              </p>
-              <p className="text-xs text-gray-500">fin estimado</p>
-            </div>
-          </div>
 
           {/* Advertencia sin coordenadas */}
           {ruta.sinCoordenadas.length > 0 && (
@@ -395,6 +449,11 @@ export default function RoutePage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm truncate">{p.nombre}</p>
                       <p className="text-xs text-gray-500 truncate">{p.direccion}</p>
+                      {kgPorNegocio[p.id] > 0 && (
+                        <p className="text-xs font-bold text-orange-600 mt-0.5">
+                          📦 {kgPorNegocio[p.id]} kg pendientes
+                        </p>
+                      )}
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-bold text-blue-600">{p.llegada}</p>

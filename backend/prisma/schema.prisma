@@ -74,20 +74,15 @@ model Order {
   user            User      @relation(fields: [user_id], references: [id])
 }
 
-// Módulo de producción (Eduardo)
+// Módulo de producción (Eduardo) — una carga = kilos reales que entran a la congeladora
 model LoteProduccion {
-  id                Int       @id @default(autoincrement())
-  fecha_inicio      DateTime  @default(now())
-  kg_programados    Float                       // kg que se planea producir
-  kg_producidos     Float?                      // kg reales (puede diferir)
-  bolsas            Int?                        // bolsas usadas
-  estado            String    @default("produciendo") // produciendo | congelando | disponible | agotado
-  horas_congelado   Int       @default(12)      // horas en congeladora (editable)
-  fecha_disponible  DateTime?                   // calculado: inicio_congelado + horas_congelado
-  notas             String?
-  creado_por        Int
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  id               Int      @id @default(autoincrement())
+  kilos            Float    // kilos reales cargados a la congeladora
+  horas_produccion Int      @default(15)  // 15h (meta) ó 24h (máximo)
+  fecha            DateTime @default(now())
+  notas            String?
+  creado_por       Int
+  created_at       DateTime @default(now())
 
-  user              User      @relation(fields: [creado_por], references: [id])
+  user             User     @relation(fields: [creado_por], references: [id])
 }
