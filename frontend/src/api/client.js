@@ -41,6 +41,7 @@ export const businessAPI = {
   update: (id, data) => api.put(`/businesses/${id}`, data),
   remove: (id) => api.delete(`/businesses/${id}`),
   getUpcoming: (days) => api.get('/businesses/upcoming', { params: { days } }),
+  getOrphaned: () => api.get('/businesses/orphaned'),
 };
 
 // ===================== VISITS =====================

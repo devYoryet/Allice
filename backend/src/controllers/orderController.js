@@ -87,7 +87,7 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { estado_pedido, estado_pago, estado_factura, comentario, kilos } = req.body;
+    const { estado_pedido, estado_pago, estado_factura, comentario, kilos, business_id } = req.body;
 
     const existing = await prisma.order.findUnique({ where: { id: parseInt(id) } });
     if (!existing) {
@@ -97,11 +97,12 @@ const update = async (req, res) => {
     const order = await prisma.order.update({
       where: { id: parseInt(id) },
       data: {
-        ...(estado_pedido && { estado_pedido }),
-        ...(estado_pago && { estado_pago }),
-        ...(estado_factura && { estado_factura }),
-        ...(comentario !== undefined && { comentario }),
-        ...(kilos && { kilos: parseFloat(kilos) }),
+        ...(estado_pedido  &&              { estado_pedido }),
+        ...(estado_pago    &&              { estado_pago }),
+        ...(estado_factura &&              { estado_factura }),
+        ...(comentario     !== undefined && { comentario }),
+        ...(kilos          &&              { kilos: parseFloat(kilos) }),
+        ...(business_id    &&              { business_id: parseInt(business_id) }),
       },
       include: {
         business: { select: { id: true, nombre: true } },

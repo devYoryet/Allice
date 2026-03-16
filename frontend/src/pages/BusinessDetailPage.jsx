@@ -4,6 +4,101 @@ import { businessAPI, visitAPI, orderAPI } from '../api/client';
 import { VisitaBadge, PedidoBadge, PagoBadge, FacturaBadge } from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { withQueue } from '../utils/offlineQueue';
+import { useAuth } from '../context/AuthContext';
+
+const SUPERMASTER_EMAIL = 'yoryet.danoun@gmail.com';
+
+// ── Modal de eliminación (solo supermaster) ───────────────────────────────
+function ModalEliminar({ business, onClose, onSuccess }) {
+  const [confirmInput, setConfirmInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const totalKg   = business.orders?.reduce((s, o) => s + o.kilos, 0) || 0;
+  const nPedidos  = business.orders?.length || 0;
+  const confirmed = confirmInput.trim() === business.nombre.trim();
+
+  const handleDelete = async () => {
+    if (!confirmed) return;
+    setLoading(true);
+    try {
+      const { data } = await businessAPI.remove(business.id);
+      onSuccess(data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al eliminar');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-xl flex-shrink-0">🗑️</div>
+          <div>
+            <h3 className="font-bold text-gray-900">Eliminar negocio</h3>
+            <p className="text-sm text-red-600 font-semibold">{business.nombre}</p>
+          </div>
+        </div>
+
+        {/* Advertencia kg */}
+        {totalKg > 0 && (
+          <div className="bg-orange-50 border border-orange-300 rounded-xl p-4 space-y-1">
+            <p className="text-sm font-bold text-orange-800">
+              ⚠️ {nPedidos} pedido{nPedidos !== 1 ? 's' : ''} · {totalKg.toLocaleString('es-CL')} kg registrados
+            </p>
+            <p className="text-xs text-orange-700">
+              Estos kilos quedarán <strong>sin asignar</strong>. Podrás reasignarlos a otro negocio desde la lista de negocios.
+            </p>
+          </div>
+        )}
+
+        {/* Info de registro */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+          <p className="text-xs text-gray-600">
+            Se registrará la <strong>fecha y hora exacta</strong> de eliminación junto con tu usuario. Esta acción no se puede deshacer automáticamente.
+          </p>
+        </div>
+
+        {/* Confirmación */}
+        <div>
+          <label className="label" style={{ color: '#dc2626' }}>
+            Escribe <strong>{business.nombre}</strong> para confirmar
+          </label>
+          <input
+            type="text"
+            className="input-field"
+            style={{ borderColor: confirmed ? '#16a34a' : '#fca5a5' }}
+            placeholder={business.nombre}
+            value={confirmInput}
+            onChange={(e) => setConfirmInput(e.target.value)}
+          />
+        </div>
+
+        {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onClose} className="btn-secondary">Cancelar</button>
+          <button
+            onClick={handleDelete}
+            disabled={!confirmed || loading}
+            className={`py-3 rounded-xl font-semibold text-sm transition-colors ${
+              confirmed && !loading
+                ? 'bg-red-600 text-white active:bg-red-700'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {loading ? 'Eliminando...' : 'Sí, eliminar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function formatDate(d) {
   if (!d) return '—';
@@ -253,11 +348,16 @@ function OrderUpdateModal({ order, onClose, onSuccess }) {
 export default function BusinessDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSupermaster = user?.email === SUPERMASTER_EMAIL;
+
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteResult, setDeleteResult] = useState(null); // { deleted_at, kilos_al_eliminar }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,6 +379,28 @@ export default function BusinessDetailPage() {
       <p className="text-gray-500">Negocio no encontrado</p>
     </div>
   );
+
+  // Pantalla post-eliminación
+  if (deleteResult) {
+    const dt = new Date(deleteResult.deleted_at);
+    return (
+      <div className="page-container text-center py-16">
+        <p className="text-5xl mb-4">🗑️</p>
+        <p className="text-xl font-bold text-gray-800 mb-2">Negocio eliminado</p>
+        <p className="text-sm text-gray-500 mb-1">
+          {dt.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })} a las {dt.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+        {deleteResult.kilos_al_eliminar > 0 && (
+          <p className="text-sm text-orange-600 font-medium mt-2 mb-4">
+            {deleteResult.kilos_al_eliminar.toLocaleString('es-CL')} kg sin asignar · reasígnalos desde la lista de negocios
+          </p>
+        )}
+        <button onClick={() => navigate('/businesses')} className="btn-primary mt-4">
+          Ir a la lista de negocios
+        </button>
+      </div>
+    );
+  }
 
   const googleMapsUrl = business.lat && business.lng
     ? `https://www.google.com/maps/dir/?api=1&destination=${business.lat},${business.lng}`
@@ -304,6 +426,15 @@ export default function BusinessDetailPage() {
         >
           ✏️
         </button>
+        {isSupermaster && (
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-10 h-10 flex items-center justify-center bg-red-50 rounded-xl shadow-sm text-red-600 active:bg-red-100"
+            title="Eliminar negocio"
+          >
+            🗑️
+          </button>
+        )}
       </div>
 
       {/* Info rápida */}
@@ -474,6 +605,17 @@ export default function BusinessDetailPage() {
           onSuccess={() => {
             setSelectedOrder(null);
             load();
+          }}
+        />
+      )}
+
+      {showDeleteModal && isSupermaster && (
+        <ModalEliminar
+          business={business}
+          onClose={() => setShowDeleteModal(false)}
+          onSuccess={(result) => {
+            setShowDeleteModal(false);
+            setDeleteResult(result);
           }}
         />
       )}

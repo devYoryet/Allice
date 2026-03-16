@@ -35,6 +35,11 @@ model Business {
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt
 
+  // Soft-delete: solo supermaster puede eliminar
+  deleted_at        DateTime?  // null = activo
+  deleted_by_email  String?    // email de quien eliminó
+  kilos_al_eliminar Float?     // kg vendidos al momento de eliminar
+
   user           User         @relation(fields: [creado_por], references: [id])
   visit_logs     VisitLog[]
   orders         Order[]
