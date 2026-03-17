@@ -89,12 +89,24 @@ export default function BusinessFormPage() {
       try {
         const q = encodeURIComponent(`${value}, Santiago, Chile`);
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1&countrycodes=cl`,
+          `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=8&addressdetails=1&countrycodes=cl`,
           { headers: { 'Accept-Language': 'es' } }
         );
         const data = await res.json();
-        setSuggestions(data);
-        setShowSuggestions(data.length > 0);
+
+        // Deduplicar por calle + comuna (Nominatim devuelve la misma calle muchas veces)
+        const seen = new Set();
+        const deduped = data.filter((item) => {
+          const road   = (item.address?.road || item.display_name.split(',')[0]).toLowerCase();
+          const suburb = (item.address?.suburb || item.address?.city_district || '').toLowerCase();
+          const key    = `${road}|${suburb}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).slice(0, 4);
+
+        setSuggestions(deduped);
+        setShowSuggestions(deduped.length > 0);
       } catch {
         // silencioso
       } finally {
@@ -105,12 +117,14 @@ export default function BusinessFormPage() {
 
   const selectSuggestion = (item) => {
     // Construir dirección legible: calle + número + comuna
+    // Si Nominatim no trae el número, preservar el que el usuario escribió
     const a = item.address || {};
-    const parts = [
-      a.road && a.house_number ? `${a.road} ${a.house_number}` : a.road,
-      a.suburb || a.city_district || a.town,
-    ].filter(Boolean);
-    const label = parts.join(', ') || item.display_name.split(',').slice(0, 2).join(',').trim();
+    const typedNumber = form.direccion.match(/\d+/)?.[0] || '';
+    const houseNumber = a.house_number || typedNumber;
+    const road        = a.road || item.display_name.split(',')[0].trim();
+    const streetPart  = houseNumber ? `${road} ${houseNumber}` : road;
+    const commune     = a.suburb || a.city_district || a.town || '';
+    const label       = [streetPart, commune].filter(Boolean).join(', ');
 
     setForm((f) => ({
       ...f,
@@ -223,7 +237,10 @@ export default function BusinessFormPage() {
             <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
               {suggestions.map((item) => {
                 const a = item.address || {};
-                const line1 = [a.road, a.house_number].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+                const typedNum = form.direccion.match(/\d+/)?.[0] || '';
+                const num   = a.house_number || typedNum;
+                const road  = a.road || item.display_name.split(',')[0].trim();
+                const line1 = num ? `${road} ${num}` : road;
                 const line2 = [a.suburb || a.city_district, a.city || a.town].filter(Boolean).join(', ');
                 return (
                   <li

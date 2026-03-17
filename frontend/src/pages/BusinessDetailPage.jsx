@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { businessAPI, visitAPI, orderAPI } from '../api/client';
 import { VisitaBadge, PedidoBadge, PagoBadge, FacturaBadge } from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -348,12 +348,15 @@ function OrderUpdateModal({ order, onClose, onSuccess }) {
 export default function BusinessDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isSupermaster = user?.email === SUPERMASTER_EMAIL;
 
+  const openVisitOnLoad = new URLSearchParams(location.search).get('openVisit') === '1';
+
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showVisitModal, setShowVisitModal] = useState(false);
+  const [showVisitModal, setShowVisitModal] = useState(openVisitOnLoad);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
   const [showDeleteModal, setShowDeleteModal] = useState(false);

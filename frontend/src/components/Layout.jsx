@@ -7,9 +7,9 @@ import OfflineBanner from './OfflineBanner';
 const navItems = [
   { to: '/',          label: 'Inicio',    icon: '🏠', exact: true },
   { to: '/businesses',label: 'Negocios',  icon: '🏪' },
+  { to: '/map',       label: 'Mapa',      icon: '🗺️' },
+  { to: '/route',     label: 'Ruta',      icon: '🛣️' },
   { to: '/produccion',label: 'Fábrica',   icon: '🏭' },
-  { to: '/cobros',    label: 'Cobros',    icon: '💰' },
-  { to: '/reports',   label: 'Reportes',  icon: '📊' },
 ];
 
 export default function Layout() {

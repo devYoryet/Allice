@@ -179,6 +179,16 @@ export default function MapPage() {
                       >
                         Ver detalle
                       </button>
+                      <button
+                        onClick={() => navigate(`/businesses/${b.id}?openVisit=1`)}
+                        style={{
+                          background: '#16a34a', color: 'white', border: 'none',
+                          borderRadius: 8, padding: '7px 12px', fontSize: 12,
+                          fontWeight: 600, cursor: 'pointer', width: '100%',
+                        }}
+                      >
+                        📝 Registrar pedido
+                      </button>
                       <a
                         href={`https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`}
                         target="_blank"
