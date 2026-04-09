@@ -14,6 +14,7 @@ export default function DashboardPage() {
     pedidosHoy: 0,
     porCobrar: 0,
     negociosSinVisitar: 0,
+    pendientesEntrega: [],
   });
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function DashboardPage() {
       const porCobrar = allOrders
         .filter((o) => o.estado_pago === 'pendiente')
         .reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
+      const pendientesEntrega = allOrders.filter((o) => o.estado_pedido === 'pendiente');
 
       const allBiz = Array.isArray(businesses.data) ? businesses.data : [];
       const sinVisitar = allBiz.filter((b) => {
@@ -45,6 +47,7 @@ export default function DashboardPage() {
         pedidosHoy: todayOrders.length,
         porCobrar,
         negociosSinVisitar: sinVisitar,
+        pendientesEntrega,
       });
     }).finally(() => setLoading(false));
   }, []);
@@ -128,6 +131,28 @@ export default function DashboardPage() {
               </p>
               <p className="text-xs text-red-500">Hace 5 días o más sin visita — toca para ver</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta pedidos pendientes de entrega */}
+      {data.pendientesEntrega.length > 0 && (
+        <div
+          className="card cursor-pointer active:scale-95 transition-transform bg-blue-50 border border-blue-200 mb-3"
+          onClick={() => navigate('/orders')}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📦</span>
+            <div className="flex-1">
+              <p className="font-semibold text-blue-700">
+                {data.pendientesEntrega.length} pedido{data.pendientesEntrega.length !== 1 ? 's' : ''} pendiente{data.pendientesEntrega.length !== 1 ? 's' : ''} de entrega
+              </p>
+              <p className="text-xs text-blue-500 truncate">
+                {data.pendientesEntrega.slice(0, 3).map(o => o.business?.nombre).filter(Boolean).join(', ')}
+                {data.pendientesEntrega.length > 3 ? ` y ${data.pendientesEntrega.length - 3} más` : ''}
+              </p>
+            </div>
+            <span className="text-blue-400 font-bold text-xl">›</span>
           </div>
         </div>
       )}

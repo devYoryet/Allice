@@ -23,9 +23,10 @@ const getAll = async (req, res) => {
     const businesses = await prisma.business.findMany({
       where,
       include: {
-        visit_logs: { orderBy: { fecha: 'desc' }, take: 1 },
-        orders:     { orderBy: { fecha: 'desc' }, take: 1 },
-        user:       { select: { id: true, name: true } },
+        visit_logs:        { orderBy: { fecha: 'desc' }, take: 1 },
+        orders:            { orderBy: { fecha: 'desc' }, take: 1 },
+        user:              { select: { id: true, name: true } },
+        whatsapp_contacts: { orderBy: { fecha: 'desc' }, take: 1 },
       },
       orderBy: { updated_at: 'desc' },
     });
@@ -40,9 +41,10 @@ const getAll = async (req, res) => {
       }
       return {
         ...b,
-        ultima_visita: b.visit_logs[0]?.fecha || null,
-        ultimos_kilos: lastOrder?.kilos || null,
+        ultima_visita:    b.visit_logs[0]?.fecha        || null,
+        ultimos_kilos:    lastOrder?.kilos               || null,
         proxima_visita,
+        ultimo_whatsapp:  b.whatsapp_contacts[0]?.fecha || null,
       };
     });
 
@@ -65,6 +67,10 @@ const getOne = async (req, res) => {
           include: { user: { select: { id: true, name: true } } },
         },
         orders: {
+          orderBy: { fecha: 'desc' },
+          include: { user: { select: { id: true, name: true } } },
+        },
+        whatsapp_contacts: {
           orderBy: { fecha: 'desc' },
           include: { user: { select: { id: true, name: true } } },
         },

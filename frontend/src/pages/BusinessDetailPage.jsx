@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { businessAPI, visitAPI, orderAPI } from '../api/client';
+import { businessAPI, visitAPI, orderAPI, whatsappAPI } from '../api/client';
 import { VisitaBadge, PedidoBadge, PagoBadge, FacturaBadge } from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { withQueue } from '../utils/offlineQueue';
@@ -107,12 +107,151 @@ function formatDate(d) {
   });
 }
 
-function whatsappLink(phone, name) {
+function buildWhatsappLink(phone, lastOrderDate) {
   const clean = phone.replace(/\D/g, '');
-  const msg = encodeURIComponent(
-    `Hola! Te contacto de parte de Tere con respecto a tu pedido en ${name}. 🧃`
+  const fechaStr = lastOrderDate
+    ? new Date(lastOrderDate).toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })
+    : null;
+  const msg = fechaStr
+    ? `Hola! Te contacto de AllIce, hielo 🧊 Queríamos saber si necesitas que te llevemos más hielo. La última entrega fue el ${fechaStr}. Si gustas podemos pasar mañana durante el día a reponer lo que nos indiques 😊`
+    : `Hola! Te contacto de AllIce, hielo 🧊 Queríamos saber si necesitas que te llevemos hielo. Si gustas podemos pasar mañana durante el día a dejarte lo que nos indiques 😊`;
+  return `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
+}
+
+function buildWazeLink(lat, lng, address) {
+  if (lat && lng) return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  return `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
+}
+
+// Modal para registrar contacto WhatsApp
+function WaContactModal({ businessId, businessName, onClose, onSuccess }) {
+  const [generoVenta, setGeneroVenta] = useState(false);
+  const [kilos,       setKilos]       = useState('');
+  const [precioKg,    setPrecioKg]    = useState('400');
+  const [numeroUsado, setNumeroUsado] = useState('');
+  const [notas,       setNotas]       = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
+
+  const montoTotal = generoVenta && kilos
+    ? Math.round(parseFloat(kilos) * parseFloat(precioKg || 400))
+    : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await whatsappAPI.create(businessId, {
+        numero_usado: numeroUsado || null,
+        genero_venta: generoVenta,
+        pedido_kilos: generoVenta && kilos ? parseFloat(kilos) : null,
+        precio_kg:    generoVenta && kilos ? parseFloat(precioKg || 400) : null,
+        notas:        notas || null,
+      });
+      onSuccess();
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Error al registrar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={onClose}>
+      <div
+        className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold">Registrar contacto WA</h3>
+          <button onClick={onClose} className="text-gray-400 text-2xl leading-none">&times;</button>
+        </div>
+        <p className="text-sm text-gray-500">{businessName}</p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Número usado */}
+          <div>
+            <label className="label">WhatsApp usado (opcional)</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="+56 9 XXXX XXXX"
+              value={numeroUsado}
+              onChange={(e) => setNumeroUsado(e.target.value)}
+            />
+          </div>
+
+          {/* ¿Generó venta? */}
+          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-700">¿Generó una venta?</p>
+              <p className="text-xs text-gray-400">Se creará un pedido pendiente de entrega</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGeneroVenta(!generoVenta)}
+              className={`w-12 h-6 rounded-full transition-colors relative flex-shrink-0 ${generoVenta ? 'bg-green-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${generoVenta ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+
+          {/* Kilos acordados */}
+          {generoVenta && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Kilos acordados</label>
+                <input
+                  type="number" min="0" step="0.1"
+                  className="input-field"
+                  placeholder="50"
+                  value={kilos}
+                  onChange={(e) => setKilos(e.target.value)}
+                  required={generoVenta}
+                />
+              </div>
+              <div>
+                <label className="label">Precio por kg ($)</label>
+                <input
+                  type="number" min="1"
+                  className="input-field"
+                  value={precioKg}
+                  onChange={(e) => setPrecioKg(e.target.value)}
+                />
+              </div>
+              {kilos && (
+                <div className="col-span-2 bg-green-50 rounded-xl px-4 py-2 text-sm">
+                  <div className="flex justify-between font-bold text-green-700">
+                    <span>Total estimado:</span>
+                    <span>${montoTotal.toLocaleString('es-CL')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notas */}
+          <div>
+            <label className="label">Notas (opcional)</label>
+            <textarea
+              className="input-field resize-none"
+              rows={2}
+              placeholder="Observaciones del contacto..."
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
+
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Guardando...' : '✓ Guardar contacto'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
-  return `https://wa.me/${clean}?text=${msg}`;
 }
 
 // Modal para registrar visita
@@ -357,10 +496,11 @@ export default function BusinessDetailPage() {
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showVisitModal, setShowVisitModal] = useState(openVisitOnLoad);
+  const [showWaModal,   setShowWaModal]    = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [activeTab, setActiveTab] = useState('info');
+  const [activeTab, setActiveTab]         = useState('info');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteResult, setDeleteResult] = useState(null); // { deleted_at, kilos_al_eliminar }
+  const [deleteResult, setDeleteResult]   = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -405,9 +545,9 @@ export default function BusinessDetailPage() {
     );
   }
 
-  const googleMapsUrl = business.lat && business.lng
-    ? `https://www.google.com/maps/dir/?api=1&destination=${business.lat},${business.lng}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.direccion)}`;
+  const lastOrderDate = business.orders?.[0]?.fecha || null;
+  const wazeUrl       = buildWazeLink(business.lat, business.lng, business.direccion);
+  const waLink        = buildWhatsappLink(business.telefono, lastOrderDate);
 
   return (
     <div className="page-container">
@@ -470,32 +610,27 @@ export default function BusinessDetailPage() {
 
       {/* Botones de acción */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <button
-          onClick={() => setShowVisitModal(true)}
-          className="btn-primary"
-        >
+        <button onClick={() => setShowVisitModal(true)} className="btn-primary">
           📝 Registrar visita
         </button>
-        <a
-          href={whatsappLink(business.telefono, business.nombre)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-success text-center py-3 px-4 rounded-xl font-semibold text-base block"
+
+        {/* WhatsApp: abre WA con mensaje + muestra modal de registro */}
+        <button
+          onClick={() => { window.open(waLink, '_blank'); setShowWaModal(true); }}
+          className="btn-success text-center py-3 px-4 rounded-xl font-semibold text-base"
         >
           💬 WhatsApp
-        </a>
+        </button>
+
         <a
-          href={googleMapsUrl}
+          href={wazeUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="btn-secondary text-center py-3 px-4 rounded-xl font-semibold text-base block"
         >
-          🗺️ Ir con Maps
+          🚗 Ir con Waze
         </a>
-        <button
-          onClick={() => navigate(`/businesses/${id}/edit`)}
-          className="btn-secondary"
-        >
+        <button onClick={() => navigate(`/businesses/${id}/edit`)} className="btn-secondary">
           ✏️ Editar
         </button>
       </div>
@@ -503,8 +638,9 @@ export default function BusinessDetailPage() {
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl">
         {[
-          { key: 'info', label: 'Visitas' },
-          { key: 'orders', label: 'Pedidos' },
+          { key: 'info',      label: 'Visitas' },
+          { key: 'orders',    label: 'Pedidos' },
+          { key: 'whatsapp',  label: '💬 WA' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -588,6 +724,55 @@ export default function BusinessDetailPage() {
         </div>
       )}
 
+      {/* Tab: WhatsApp */}
+      {activeTab === 'whatsapp' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="section-title">Contactos por WhatsApp</p>
+            <button
+              onClick={() => setShowWaModal(true)}
+              className="text-xs text-green-600 font-semibold bg-green-50 px-3 py-1.5 rounded-xl active:bg-green-100"
+            >
+              + Registrar
+            </button>
+          </div>
+          {(business.whatsapp_contacts || []).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Sin contactos WA registrados</p>
+            </div>
+          ) : (
+            (business.whatsapp_contacts || []).map((w) => (
+              <div key={w.id} className="card">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`badge ${w.genero_venta ? 'badge-green' : 'badge-yellow'}`}>
+                        {w.genero_venta ? '🎉 Con venta' : '📞 Sin venta'}
+                      </span>
+                      <p className="text-xs text-gray-400">{w.user?.name}</p>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {new Date(w.fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                    {w.numero_usado && (
+                      <p className="text-xs text-gray-400 mt-0.5">WA: {w.numero_usado}</p>
+                    )}
+                    {w.genero_venta && w.pedido_kilos && (
+                      <p className="text-sm font-semibold text-green-700 mt-1">
+                        {w.pedido_kilos} kg — ${Math.round(w.pedido_kilos * (w.precio_kg || 400)).toLocaleString('es-CL')}
+                      </p>
+                    )}
+                    {w.notas && (
+                      <p className="text-xs text-gray-500 mt-1 italic">{w.notas}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Modals */}
       {showVisitModal && (
         <VisitModal
@@ -609,6 +794,15 @@ export default function BusinessDetailPage() {
             setSelectedOrder(null);
             load();
           }}
+        />
+      )}
+
+      {showWaModal && (
+        <WaContactModal
+          businessId={id}
+          businessName={business.nombre}
+          onClose={() => setShowWaModal(false)}
+          onSuccess={() => { setShowWaModal(false); setActiveTab('whatsapp'); load(); }}
         />
       )}
 

@@ -73,6 +73,12 @@ export const produccionAPI = {
   remove:  (id)       => api.delete(`/produccion/${id}`),
 };
 
+// ===================== WHATSAPP CONTACTS =====================
+export const whatsappAPI = {
+  getByBusiness: (businessId)       => api.get(`/businesses/${businessId}/whatsapp`),
+  create:        (businessId, data) => api.post(`/businesses/${businessId}/whatsapp`, data),
+};
+
 // ===================== CIERRE DE MES =====================
 export const cierreAPI = {
   getResumenActual: ()    => api.get('/cierres/resumen-actual'),
