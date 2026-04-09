@@ -14,6 +14,7 @@ import OrdersPage from './pages/OrdersPage';
 import RoutePage from './pages/RoutePage';
 import ProduccionPage from './pages/ProduccionPage';
 import CobrosPage from './pages/CobrosPage';
+import CierrePage from './pages/CierrePage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="cobros" element={<CobrosPage />} />
+            <Route path="cierre" element={<CierrePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -53,9 +53,9 @@ export const visitAPI = {
 // ===================== ORDERS =====================
 export const orderAPI = {
   getByBusiness: (businessId) => api.get(`/businesses/${businessId}/orders`),
-  getAll: () => api.get('/orders'),
-  create: (businessId, data) => api.post(`/businesses/${businessId}/orders`, data),
-  update: (id, data) => api.put(`/orders/${id}`, data),
+  getAll:        (params)     => api.get('/orders', { params }),
+  create:        (businessId, data) => api.post(`/businesses/${businessId}/orders`, data),
+  update:        (id, data)   => api.put(`/orders/${id}`, data),
 };
 
 // ===================== REPORTS =====================
@@ -71,6 +71,14 @@ export const produccionAPI = {
   create:  (data)     => api.post('/produccion', data),
   update:  (id, data) => api.put(`/produccion/${id}`, data),
   remove:  (id)       => api.delete(`/produccion/${id}`),
+};
+
+// ===================== CIERRE DE MES =====================
+export const cierreAPI = {
+  getResumenActual: ()    => api.get('/cierres/resumen-actual'),
+  getAll:           ()    => api.get('/cierres'),
+  getById:          (id)  => api.get(`/cierres/${id}`),
+  create:           ()    => api.post('/cierres'),
 };
 
 export default api;

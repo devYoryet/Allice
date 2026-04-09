@@ -20,6 +20,7 @@ model User {
   visit_logs    VisitLog[]
   orders        Order[]
   lotes         LoteProduccion[]
+  cierres       CierreMes[]
 }
 
 model Business {
@@ -59,24 +60,56 @@ model VisitLog {
 }
 
 model Order {
-  id              Int       @id @default(autoincrement())
+  id              Int        @id @default(autoincrement())
   business_id     Int
   user_id         Int
-  fecha           DateTime  @default(now())
+  fecha           DateTime   @default(now())
   kilos           Float
-  precio_kg       Float     @default(400)   // precio por kilo en CLP
-  con_iva         Boolean   @default(false) // true = facturado con IVA 19%
-  monto_neto      Float?                    // kilos × precio_kg
-  monto_total     Float?                    // monto_neto × 1.19 si con_iva, else monto_neto
-  estado_pedido   String    @default("pendiente")   // pendiente | entregado
-  estado_pago     String    @default("pendiente")   // pendiente | pagado
-  estado_factura  String    @default("sin_factura") // sin_factura | facturado
+  precio_kg       Float      @default(400)   // precio por kilo en CLP
+  con_iva         Boolean    @default(false) // true = facturado con IVA 19%
+  monto_neto      Float?                     // kilos × precio_kg
+  monto_total     Float?                     // monto_neto × 1.19 si con_iva, else monto_neto
+  estado_pedido   String     @default("pendiente")   // pendiente | entregado
+  estado_pago     String     @default("pendiente")   // pendiente | pagado
+  estado_factura  String     @default("sin_factura") // sin_factura | facturado
   comentario      String?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  cierre_id       Int?       // null = período actual abierto; asignado al hacer cierre de mes
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
 
-  business        Business  @relation(fields: [business_id], references: [id], onDelete: Cascade)
-  user            User      @relation(fields: [user_id], references: [id])
+  business        Business   @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  user            User       @relation(fields: [user_id], references: [id])
+  cierre          CierreMes? @relation(fields: [cierre_id], references: [id])
+}
+
+// Cierre mensual: se realiza el día 9 de cada mes (ej: 9 abril, 9 mayo, ...)
+model CierreMes {
+  id               Int                @id @default(autoincrement())
+  periodo          String             // ej: "Abril 2026"
+  fecha_cierre     DateTime           @default(now())
+  total_kilos      Float
+  total_ventas     Float              // suma monto_total de todas las órdenes cerradas
+  total_cobrado    Float              // lo que ya estaba pagado al momento del cierre
+  ordenes_cerradas Int
+  cerrado_por      Int
+  created_at       DateTime           @default(now())
+
+  usuario          User               @relation(fields: [cerrado_por], references: [id])
+  detalles         CierreMesDetalle[]
+  orders           Order[]
+}
+
+// Detalle por negocio de cada cierre
+model CierreMesDetalle {
+  id             Int       @id @default(autoincrement())
+  cierre_id      Int
+  business_id    Int?      // puede ser null si el negocio fue eliminado
+  nombre_negocio String    // snapshot del nombre al momento del cierre
+  total_kilos    Float
+  total_ventas   Float
+  total_pedidos  Int
+
+  cierre         CierreMes @relation(fields: [cierre_id], references: [id])
 }
 
 // Módulo de producción (Eduardo) — una carga = kilos reales que entran a la congeladora
