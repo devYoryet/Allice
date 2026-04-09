@@ -128,7 +128,6 @@ function WaContactModal({ businessId, businessName, onClose, onSuccess }) {
   const [generoVenta, setGeneroVenta] = useState(false);
   const [kilos,       setKilos]       = useState('');
   const [precioKg,    setPrecioKg]    = useState('400');
-  const [numeroUsado, setNumeroUsado] = useState('');
   const [notas,       setNotas]       = useState('');
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
@@ -143,7 +142,6 @@ function WaContactModal({ businessId, businessName, onClose, onSuccess }) {
     setLoading(true);
     try {
       await whatsappAPI.create(businessId, {
-        numero_usado: numeroUsado || null,
         genero_venta: generoVenta,
         pedido_kilos: generoVenta && kilos ? parseFloat(kilos) : null,
         precio_kg:    generoVenta && kilos ? parseFloat(precioKg || 400) : null,
@@ -158,74 +156,79 @@ function WaContactModal({ businessId, businessName, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4"
+        className="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold">Registrar contacto WA</h3>
-          <button onClick={onClose} className="text-gray-400 text-2xl leading-none">&times;</button>
-        </div>
-        <p className="text-sm text-gray-500">{businessName}</p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Número usado */}
+        {/* Header */}
+        <div className="bg-green-500 px-5 py-4 flex items-center justify-between">
           <div>
-            <label className="label">WhatsApp usado (opcional)</label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="+56 9 XXXX XXXX"
-              value={numeroUsado}
-              onChange={(e) => setNumeroUsado(e.target.value)}
-            />
+            <h3 className="text-white font-bold text-base">💬 ¿El cliente confirmó?</h3>
+            <p className="text-green-100 text-xs mt-0.5">{businessName}</p>
           </div>
+          <button onClick={onClose} className="text-white/70 text-2xl leading-none hover:text-white">&times;</button>
+        </div>
 
-          {/* ¿Generó venta? */}
-          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-gray-700">¿Generó una venta?</p>
-              <p className="text-xs text-gray-400">Se creará un pedido pendiente de entrega</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setGeneroVenta(!generoVenta)}
-              className={`w-12 h-6 rounded-full transition-colors relative flex-shrink-0 ${generoVenta ? 'bg-green-500' : 'bg-gray-300'}`}
-            >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${generoVenta ? 'translate-x-6' : 'translate-x-0.5'}`} />
-            </button>
-          </div>
-
-          {/* Kilos acordados */}
-          {generoVenta && (
-            <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* ¿Generó venta? — opción principal */}
+          <div
+            onClick={() => setGeneroVenta(!generoVenta)}
+            className={`rounded-xl p-4 border-2 cursor-pointer transition-all ${
+              generoVenta
+                ? 'border-green-400 bg-green-50'
+                : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center justify-between">
               <div>
-                <label className="label">Kilos acordados</label>
-                <input
-                  type="number" min="0" step="0.1"
-                  className="input-field"
-                  placeholder="50"
-                  value={kilos}
-                  onChange={(e) => setKilos(e.target.value)}
-                  required={generoVenta}
-                />
+                <p className={`font-semibold text-sm ${generoVenta ? 'text-green-700' : 'text-gray-700'}`}>
+                  {generoVenta ? '🎉 Sí, acordó compra' : '📞 Solo contacto, sin venta'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {generoVenta
+                    ? 'Se creará un pedido pendiente para Teresa'
+                    : 'Se registra el contacto sin pedido'}
+                </p>
               </div>
-              <div>
-                <label className="label">Precio por kg ($)</label>
-                <input
-                  type="number" min="1"
-                  className="input-field"
-                  value={precioKg}
-                  onChange={(e) => setPrecioKg(e.target.value)}
-                />
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                generoVenta ? 'border-green-500 bg-green-500' : 'border-gray-300'
+              }`}>
+                {generoVenta && <span className="text-white text-xs">✓</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Kilos acordados — solo si generó venta */}
+          {generoVenta && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Kilos acordados</label>
+                  <input
+                    type="number" min="0.1" step="0.1"
+                    className="input-field"
+                    placeholder="50"
+                    value={kilos}
+                    onChange={(e) => setKilos(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="label">Precio/kg ($)</label>
+                  <input
+                    type="number" min="1"
+                    className="input-field"
+                    value={precioKg}
+                    onChange={(e) => setPrecioKg(e.target.value)}
+                  />
+                </div>
               </div>
               {kilos && (
-                <div className="col-span-2 bg-green-50 rounded-xl px-4 py-2 text-sm">
-                  <div className="flex justify-between font-bold text-green-700">
-                    <span>Total estimado:</span>
-                    <span>${montoTotal.toLocaleString('es-CL')}</span>
-                  </div>
+                <div className="bg-green-50 rounded-xl px-4 py-2.5 flex justify-between items-center">
+                  <span className="text-sm text-green-700">Total estimado</span>
+                  <span className="font-black text-green-700">${montoTotal.toLocaleString('es-CL')}</span>
                 </div>
               )}
             </div>
@@ -234,10 +237,10 @@ function WaContactModal({ businessId, businessName, onClose, onSuccess }) {
           {/* Notas */}
           <div>
             <label className="label">Notas (opcional)</label>
-            <textarea
-              className="input-field resize-none"
-              rows={2}
-              placeholder="Observaciones del contacto..."
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Ej: quiere entrega en la mañana"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
             />
@@ -245,9 +248,18 @@ function WaContactModal({ businessId, businessName, onClose, onSuccess }) {
 
           {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
 
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Guardando...' : '✓ Guardar contacto'}
-          </button>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading || (generoVenta && !kilos)}
+              className="flex-1 py-3 rounded-xl bg-green-500 text-white font-bold text-sm active:bg-green-600 disabled:opacity-40"
+            >
+              {loading ? 'Guardando...' : 'Registrar'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
