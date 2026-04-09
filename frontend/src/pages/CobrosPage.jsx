@@ -20,7 +20,8 @@ export default function CobrosPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await orderAPI.getAll();
+      // Solo el período actual (cierre_id IS NULL) para que el contador reinicie tras el cierre
+      const { data } = await orderAPI.getAll({ open: 1 });
       setOrders(Array.isArray(data) ? data : []);
     } catch {
       setOrders([]);

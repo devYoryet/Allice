@@ -18,8 +18,10 @@ const getSummary = async (req, res) => {
       start.setHours(0, 0, 0, 0);
     }
 
+    // ?open=1 restringe al período actual (sin cierre asignado), ignorando fechas
+    const whereBase = req.query.open === '1' ? { cierre_id: null } : { fecha: { gte: start, lte: now } };
     const orders = await prisma.order.findMany({
-      where: { fecha: { gte: start, lte: now } },
+      where: whereBase,
       include: { business: { select: { id: true, nombre: true } } },
     });
 
@@ -46,8 +48,9 @@ const getSummary = async (req, res) => {
     const pendientes = orders.filter(o => o.estado_pago === 'pendiente').reduce((s,o) => s + (o.monto_total || o.kilos * 400), 0);
 
     // Tasa de conversión: visitas con venta / total visitas (en el período)
+    const visitaWhere = req.query.open === '1' ? { fecha: { gte: start, lte: now } } : { fecha: { gte: start, lte: now } };
     const visitas = await prisma.visitLog.findMany({
-      where: { fecha: { gte: start, lte: now } },
+      where: visitaWhere,
     });
     const conversionRate = visitas.length > 0
       ? Math.round((visitas.filter(v => v.tipo === 'visita_con_venta').length / visitas.length) * 100)

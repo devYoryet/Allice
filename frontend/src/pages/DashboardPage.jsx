@@ -20,7 +20,7 @@ export default function DashboardPage() {
     const hoy = new Date().toDateString();
     Promise.all([
       produccionAPI.getAll().catch(() => ({ data: null })),
-      orderAPI.getAll().catch(() => ({ data: [] })),
+      orderAPI.getAll({ open: 1 }).catch(() => ({ data: [] })),
       businessAPI.getAll().catch(() => ({ data: [] })),
     ]).then(([prod, orders, businesses]) => {
       const stock = prod.data?.stock || { disponible: 0 };
@@ -142,6 +142,7 @@ export default function DashboardPage() {
           { icon: '🗺️', label: 'Mapa',      to: '/map' },
           { icon: '📦', label: 'Pedidos',   to: '/orders' },
           { icon: '💰', label: 'Cobros',    to: '/cobros' },
+          ...(user?.role === 'admin' ? [{ icon: '🔒', label: 'Cierre mes', to: '/cierre' }] : []),
         ].map((a) => (
           <button
             key={a.to}
