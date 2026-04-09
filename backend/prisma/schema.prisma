@@ -74,6 +74,7 @@ model Order {
   estado_pedido   String     @default("pendiente")   // pendiente | entregado
   estado_pago     String     @default("pendiente")   // pendiente | pagado
   estado_factura  String     @default("sin_factura") // sin_factura | facturado
+  origen          String     @default("presencial")  // presencial | whatsapp
   comentario      String?
   cierre_id       Int?       // null = período actual abierto; asignado al hacer cierre de mes
   created_at      DateTime   @default(now())

@@ -64,6 +64,7 @@ const create = async (req, res) => {
             monto_total:   montoNeto,
             estado_pedido: 'pendiente',
             estado_pago:   'pendiente',
+            origen:        'whatsapp',
             comentario:    `Pedido acordado por WhatsApp${notas ? ' — ' + notas : ''}`,
           },
         });

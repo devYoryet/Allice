@@ -6,7 +6,7 @@ const getByBusiness = async (req, res) => {
   try {
     const { businessId } = req.params;
     const orders = await prisma.order.findMany({
-      where: { business_id: parseInt(businessId) },
+      where:   { business_id: parseInt(businessId) },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { fecha: 'desc' },
     });
@@ -23,8 +23,9 @@ const getAll = async (req, res) => {
     const orders = await prisma.order.findMany({
       where,
       include: {
-        business: { select: { id: true, nombre: true } },
-        user: { select: { id: true, name: true } },
+        // Incluir lat/lng para que el dashboard pueda armar el link de Waze
+        business: { select: { id: true, nombre: true, lat: true, lng: true, direccion: true } },
+        user:     { select: { id: true, name: true } },
       },
       orderBy: { fecha: 'desc' },
     });
@@ -50,9 +51,10 @@ const create = async (req, res) => {
       return res.status(404).json({ error: 'Negocio no encontrado' });
     }
 
-    const kg       = parseFloat(kilos);
-    const precioKg = req.body.precio_kg ? parseFloat(req.body.precio_kg) : 400;
-    const conIva   = req.body.con_iva === true || req.body.con_iva === 'true';
+    const kg         = parseFloat(kilos);
+    const precioKg   = req.body.precio_kg ? parseFloat(req.body.precio_kg) : 400;
+    const conIva     = req.body.con_iva === true || req.body.con_iva === 'true';
+    const origen     = req.body.origen || 'presencial'; // presencial | whatsapp
     const montoNeto  = Math.round(kg * precioKg);
     const montoTotal = conIva ? Math.round(montoNeto * 1.19) : montoNeto;
 
@@ -68,6 +70,7 @@ const create = async (req, res) => {
         estado_pedido:  'pendiente',
         estado_pago:    'pendiente',
         estado_factura: conIva ? 'facturado' : 'sin_factura',
+        origen,
         comentario:     comentario || null,
         fecha:          fecha ? new Date(fecha) : new Date(),
       },
@@ -77,7 +80,7 @@ const create = async (req, res) => {
     // Actualizar estado_visita del negocio a cliente_activo
     await prisma.business.update({
       where: { id: parseInt(businessId) },
-      data: { estado_visita: 'cliente_activo' },
+      data:  { estado_visita: 'cliente_activo' },
     });
 
     res.status(201).json(order);
@@ -108,8 +111,8 @@ const update = async (req, res) => {
         ...(business_id    &&              { business_id: parseInt(business_id) }),
       },
       include: {
-        business: { select: { id: true, nombre: true } },
-        user: { select: { id: true, name: true } },
+        business: { select: { id: true, nombre: true, lat: true, lng: true, direccion: true } },
+        user:     { select: { id: true, name: true } },
       },
     });
 

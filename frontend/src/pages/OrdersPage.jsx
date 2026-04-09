@@ -78,12 +78,12 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [filter, setFilter] = useState('all'); // all | pending | delivered | por_cobrar | pagados
+  const [filter, setFilter] = useState('all'); // all | whatsapp | pending | delivered | por_cobrar | pagados
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await orderAPI.getAll();
+      const { data } = await orderAPI.getAll({ open: 1 });
       setOrders(data);
     } catch {
       setOrders([]);
@@ -95,7 +95,8 @@ export default function OrdersPage() {
   useEffect(() => { load(); }, []);
 
   const filtered = orders.filter((o) => {
-    if (filter === 'pending')    return o.estado_pedido === 'pendiente' || o.estado_pago === 'pendiente';
+    if (filter === 'whatsapp')   return o.origen === 'whatsapp';
+    if (filter === 'pending')    return o.estado_pedido === 'pendiente';
     if (filter === 'delivered')  return o.estado_pedido === 'entregado';
     if (filter === 'por_cobrar') return o.estado_pago === 'pendiente';
     if (filter === 'pagados')    return o.estado_pago === 'pagado';
@@ -113,11 +114,12 @@ export default function OrdersPage() {
       {/* Filtros */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
         {[
-          { value: 'all',       label: 'Todos' },
-          { value: 'por_cobrar',label: '⏳ Por cobrar' },
-          { value: 'pagados',   label: '✅ Pagados' },
-          { value: 'pending',   label: '📦 Pendientes' },
-          { value: 'delivered', label: '🚚 Entregados' },
+          { value: 'all',        label: 'Todos' },
+          { value: 'whatsapp',   label: '💬 WhatsApp' },
+          { value: 'pending',    label: '📦 Pendientes' },
+          { value: 'por_cobrar', label: '⏳ Por cobrar' },
+          { value: 'pagados',    label: '✅ Pagados' },
+          { value: 'delivered',  label: '🚚 Entregados' },
         ].map((f) => (
           <button
             key={f.value}
@@ -186,6 +188,11 @@ export default function OrdersPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-3">
+                    {o.origen === 'whatsapp' && (
+                      <span className="badge" style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }}>
+                        💬 WhatsApp
+                      </span>
+                    )}
                     <PedidoBadge estado={o.estado_pedido} />
                     <PagoBadge estado={o.estado_pago} />
                     <FacturaBadge estado={o.estado_factura} />
