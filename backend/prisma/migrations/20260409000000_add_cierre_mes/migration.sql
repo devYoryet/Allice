@@ -1,8 +1,9 @@
 -- Cierre de mes: se realiza el día 9 de cada mes
 -- Preserva el histórico de ventas por local y resetea el contador del período actual
+-- Usa IF NOT EXISTS para que sea idempotente (se puede ejecutar más de una vez sin error)
 
 -- Tabla principal de cierres
-CREATE TABLE "CierreMes" (
+CREATE TABLE IF NOT EXISTS "CierreMes" (
   "id"               SERIAL PRIMARY KEY,
   "periodo"          TEXT NOT NULL,              -- ej: "Abril 2026"
   "fecha_cierre"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -18,7 +19,7 @@ CREATE TABLE "CierreMes" (
 );
 
 -- Detalle por negocio de cada cierre (snapshot histórico)
-CREATE TABLE "CierreMesDetalle" (
+CREATE TABLE IF NOT EXISTS "CierreMesDetalle" (
   "id"             SERIAL PRIMARY KEY,
   "cierre_id"      INTEGER NOT NULL,
   "business_id"    INTEGER,                      -- null si el negocio fue eliminado
@@ -34,11 +35,19 @@ CREATE TABLE "CierreMesDetalle" (
 -- Vincular órdenes al cierre (null = período actual abierto)
 ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "cierre_id" INTEGER;
 
-ALTER TABLE "Order" ADD CONSTRAINT "Order_cierre_id_fkey"
-  FOREIGN KEY ("cierre_id") REFERENCES "CierreMes"("id")
-  ON UPDATE CASCADE ON DELETE SET NULL;
+-- Agregar FK solo si no existe
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'Order_cierre_id_fkey'
+  ) THEN
+    ALTER TABLE "Order" ADD CONSTRAINT "Order_cierre_id_fkey"
+      FOREIGN KEY ("cierre_id") REFERENCES "CierreMes"("id")
+      ON UPDATE CASCADE ON DELETE SET NULL;
+  END IF;
+END $$;
 
--- Índices para performance
-CREATE INDEX "CierreMes_fecha_cierre_idx" ON "CierreMes"("fecha_cierre" DESC);
-CREATE INDEX "CierreMesDetalle_cierre_id_idx" ON "CierreMesDetalle"("cierre_id");
-CREATE INDEX "Order_cierre_id_idx" ON "Order"("cierre_id");
+-- Índices para performance (IF NOT EXISTS disponible desde PG 9.5)
+CREATE INDEX IF NOT EXISTS "CierreMes_fecha_cierre_idx"     ON "CierreMes"("fecha_cierre" DESC);
+CREATE INDEX IF NOT EXISTS "CierreMesDetalle_cierre_id_idx" ON "CierreMesDetalle"("cierre_id");
+CREATE INDEX IF NOT EXISTS "Order_cierre_id_idx"            ON "Order"("cierre_id");
