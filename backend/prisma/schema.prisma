@@ -16,11 +16,12 @@ model User {
   role          String            @default("vendedor") // admin | vendedor | produccion
   created_at    DateTime          @default(now())
 
-  businesses    Business[]
-  visit_logs    VisitLog[]
-  orders        Order[]
-  lotes         LoteProduccion[]
-  cierres       CierreMes[]
+  businesses        Business[]
+  visit_logs        VisitLog[]
+  orders            Order[]
+  lotes             LoteProduccion[]
+  cierres           CierreMes[]
+  whatsapp_contacts WhatsAppContact[]
 }
 
 model Business {
@@ -41,9 +42,10 @@ model Business {
   deleted_by_email  String?    // email de quien eliminó
   kilos_al_eliminar Float?     // kg vendidos al momento de eliminar
 
-  user           User         @relation(fields: [creado_por], references: [id])
-  visit_logs     VisitLog[]
-  orders         Order[]
+  user              User              @relation(fields: [creado_por], references: [id])
+  visit_logs        VisitLog[]
+  orders            Order[]
+  whatsapp_contacts WhatsAppContact[]
 }
 
 model VisitLog {
@@ -110,6 +112,23 @@ model CierreMesDetalle {
   total_pedidos  Int
 
   cierre         CierreMes @relation(fields: [cierre_id], references: [id])
+}
+
+// Registro de contactos por WhatsApp a clientes
+model WhatsAppContact {
+  id           Int       @id @default(autoincrement())
+  business_id  Int
+  user_id      Int
+  fecha        DateTime  @default(now())
+  numero_usado String?   // qué número de WA se usó (puede quedar vacío)
+  genero_venta Boolean   @default(false)
+  pedido_kilos Float?    // kilos acordados si generó venta
+  precio_kg    Float?    // precio por kilo si generó venta
+  notas        String?
+  created_at   DateTime  @default(now())
+
+  business     Business  @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [user_id], references: [id])
 }
 
 // Módulo de producción (Eduardo) — una carga = kilos reales que entran a la congeladora

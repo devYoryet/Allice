@@ -12,6 +12,7 @@ const orderRoutes     = require('./routes/orders');
 const reportRoutes    = require('./routes/reports');
 const produccionRoutes = require('./routes/produccion');
 const cierreRoutes    = require('./routes/cierres');
+const whatsappRoutes  = require('./routes/whatsapp');
 
 const app = express();
 
@@ -39,8 +40,9 @@ app.use(express.json());
 // Rutas API
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
-app.use('/api/businesses/:businessId/visits', visitRoutes);
-app.use('/api/businesses/:businessId/orders', orderRoutes);
+app.use('/api/businesses/:businessId/visits',    visitRoutes);
+app.use('/api/businesses/:businessId/orders',    orderRoutes);
+app.use('/api/businesses/:businessId/whatsapp',  whatsappRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/produccion', produccionRoutes);
 app.use('/api/cierres', cierreRoutes);

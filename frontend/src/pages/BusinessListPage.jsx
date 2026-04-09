@@ -154,7 +154,7 @@ function BusinessCard({ business, onClick }) {
         <VisitaBadge estado={business.estado_visita} />
       </div>
 
-      <div className="flex gap-4 mt-3 pt-3 border-t border-gray-50">
+      <div className="flex gap-3 mt-3 pt-3 border-t border-gray-50">
         <div className="flex-1 text-center">
           <p className="text-xs text-gray-400">Última visita</p>
           <p className="text-sm font-medium text-gray-700">
@@ -168,9 +168,15 @@ function BusinessCard({ business, onClick }) {
           </p>
         </div>
         <div className="flex-1 text-center">
-          <p className="text-xs text-gray-400">Próxima visita</p>
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-xs text-gray-400">Próx. visita</p>
+          <p className={`text-sm font-medium ${business.proxima_visita && new Date(business.proxima_visita) < new Date() ? 'text-red-500' : 'text-gray-700'}`}>
             {business.proxima_visita ? formatDate(business.proxima_visita) : '—'}
+          </p>
+        </div>
+        <div className="flex-1 text-center">
+          <p className="text-xs text-gray-400">💬 Último WA</p>
+          <p className="text-sm font-medium text-green-600">
+            {business.ultimo_whatsapp ? formatDate(business.ultimo_whatsapp) : '—'}
           </p>
         </div>
       </div>
