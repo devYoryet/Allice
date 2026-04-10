@@ -48,7 +48,7 @@ const getSummary = async (req, res) => {
 
     const totalNeto  = orders.reduce((sum, o) => sum + (o.monto_neto  || o.kilos * 400), 0);
     const totalTotal = orders.reduce((sum, o) => sum + (o.monto_total || o.kilos * 400), 0);
-    const pendientes = orders.filter(o => o.estado_pago === 'pendiente').reduce((s,o) => s + (o.monto_total || o.kilos * 400), 0);
+    const pendientes = orders.filter(o => o.estado_pedido === 'entregado' && o.estado_pago === 'pendiente').reduce((s,o) => s + (o.monto_total || o.kilos * 400), 0);
 
     // Tasa de conversión: visitas con venta / total visitas (en el período)
     const visitaWhere = req.query.open === '1' ? { fecha: { gte: start, lte: now } } : { fecha: { gte: start, lte: now } };
