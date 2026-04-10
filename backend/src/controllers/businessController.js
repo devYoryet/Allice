@@ -20,16 +20,27 @@ const getAll = async (req, res) => {
         : {}),
     };
 
-    const businesses = await prisma.business.findMany({
-      where,
-      include: {
-        visit_logs:        { orderBy: { fecha: 'desc' }, take: 1 },
-        orders:            { orderBy: { fecha: 'desc' }, take: 1 },
-        user:              { select: { id: true, name: true } },
-        whatsapp_contacts: { orderBy: { fecha: 'desc' }, take: 1 },
-      },
-      orderBy: { updated_at: 'desc' },
-    });
+    const [businesses, kilosAgg] = await Promise.all([
+      prisma.business.findMany({
+        where,
+        include: {
+          visit_logs:        { orderBy: { fecha: 'desc' }, take: 1 },
+          orders:            { orderBy: { fecha: 'desc' }, take: 1 },
+          user:              { select: { id: true, name: true } },
+          whatsapp_contacts: { orderBy: { fecha: 'desc' }, take: 1 },
+        },
+      }),
+      prisma.order.groupBy({
+        by: ['business_id'],
+        _sum: { kilos: true },
+      }),
+    ]);
+
+    // Mapa de total kilos por negocio
+    const kilosMap = {};
+    for (const row of kilosAgg) {
+      kilosMap[row.business_id] = row._sum.kilos || 0;
+    }
 
     const result = businesses.map((b) => {
       const lastOrder = b.orders[0];
@@ -39,13 +50,27 @@ const getAll = async (req, res) => {
         fecha.setDate(fecha.getDate() + 4);
         proxima_visita = fecha.toISOString();
       }
+      const sinTelefono  = !b.telefono?.trim();
+      const sinDireccion = !b.direccion?.trim();
       return {
         ...b,
         ultima_visita:    b.visit_logs[0]?.fecha        || null,
         ultimos_kilos:    lastOrder?.kilos               || null,
         proxima_visita,
         ultimo_whatsapp:  b.whatsapp_contacts[0]?.fecha || null,
+        total_kilos:      kilosMap[b.id]                || 0,
+        sin_telefono:     sinTelefono,
+        sin_direccion:    sinDireccion,
+        datos_incompletos: sinTelefono || sinDireccion,
       };
+    });
+
+    // Ordenar: más ventas (total_kilos) primero; empate → última visita más reciente
+    result.sort((a, b) => {
+      if (b.total_kilos !== a.total_kilos) return b.total_kilos - a.total_kilos;
+      const dateA = a.ultima_visita ? new Date(a.ultima_visita).getTime() : 0;
+      const dateB = b.ultima_visita ? new Date(b.ultima_visita).getTime() : 0;
+      return dateB - dateA;
     });
 
     res.json(result);
