@@ -19,7 +19,11 @@ const getByBusiness = async (req, res) => {
 const getAll = async (req, res) => {
   try {
     // ?open=1 → solo el período actual (cierre_id IS NULL)
-    const where = req.query.open === '1' ? { cierre_id: null } : {};
+    // Siempre excluir pedidos de negocios eliminados
+    const where = {
+      business: { deleted_at: null },
+      ...(req.query.open === '1' ? { cierre_id: null } : {}),
+    };
     const orders = await prisma.order.findMany({
       where,
       include: {

@@ -14,9 +14,9 @@ const createCierre = async (req, res) => {
       return res.status(403).json({ error: 'Solo administradores pueden ejecutar el cierre de mes' });
     }
 
-    // Obtener todas las órdenes del período actual (aún no cerradas)
+    // Obtener todas las órdenes del período actual (aún no cerradas, excluir negocios eliminados)
     const openOrders = await prisma.order.findMany({
-      where: { cierre_id: null },
+      where: { cierre_id: null, business: { deleted_at: null } },
       include: { business: { select: { id: true, nombre: true } } },
     });
 
@@ -137,7 +137,7 @@ const getCierreById = async (req, res) => {
 const getResumenActual = async (req, res) => {
   try {
     const openOrders = await prisma.order.findMany({
-      where: { cierre_id: null },
+      where: { cierre_id: null, business: { deleted_at: null } },
       include: { business: { select: { id: true, nombre: true } } },
     });
 
