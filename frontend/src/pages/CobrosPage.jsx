@@ -59,13 +59,14 @@ export default function CobrosPage() {
   };
 
   const filtered = orders.filter((o) => {
-    if (filter === 'pendiente') return o.estado_pago === 'pendiente';
-    if (filter === 'pagado') return o.estado_pago === 'pagado';
+    // "Por cobrar" = entregado pero no pagado (no cobrar lo que no se entregó)
+    if (filter === 'pendiente') return o.estado_pedido === 'entregado' && o.estado_pago === 'pendiente';
+    if (filter === 'pagado')    return o.estado_pago === 'pagado';
     return true;
   });
 
   const totalPendiente = orders
-    .filter((o) => o.estado_pago === 'pendiente')
+    .filter((o) => o.estado_pedido === 'entregado' && o.estado_pago === 'pendiente')
     .reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
 
   const totalPagado = orders

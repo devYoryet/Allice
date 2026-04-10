@@ -143,8 +143,9 @@ const getResumenActual = async (req, res) => {
 
     const totalKilos   = openOrders.reduce((s, o) => s + o.kilos, 0);
     const totalVentas  = openOrders.reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
-    const totalPagado  = openOrders.filter((o) => o.estado_pago === 'pagado').reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
-    const totalPendiente = totalVentas - totalPagado;
+    const totalPagado    = openOrders.filter((o) => o.estado_pago === 'pagado').reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
+    // Por cobrar = entregado pero no pagado
+    const totalPendiente = openOrders.filter((o) => o.estado_pedido === 'entregado' && o.estado_pago === 'pendiente').reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
 
     // Agrupar por negocio
     const byBusiness = {};

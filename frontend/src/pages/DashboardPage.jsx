@@ -10,9 +10,20 @@ function wazeLink(lat, lng, address) {
 }
 
 // Sección de alertas WhatsApp — pedidos WA pendientes de entrega
-function WAAlerts({ orders, onNavigate }) {
+function WAAlerts({ orders, onMarkDelivered, onNavigate }) {
   const [expanded, setExpanded] = useState(true);
+  const [marking, setMarking]   = useState(null);
   if (!orders.length) return null;
+
+  const handleDeliver = async (e, orderId) => {
+    e.stopPropagation();
+    setMarking(orderId);
+    try {
+      await onMarkDelivered(orderId);
+    } finally {
+      setMarking(null);
+    }
+  };
 
   return (
     <div className="mb-3">
@@ -33,7 +44,8 @@ function WAAlerts({ orders, onNavigate }) {
       {expanded && (
         <div className="bg-green-50 border border-green-200 border-t-0 rounded-b-2xl divide-y divide-green-100">
           {orders.map((o) => (
-            <div key={o.id} className="px-4 py-3 flex items-center justify-between gap-3">
+            <div key={o.id} className="px-4 py-3 flex items-center gap-3">
+              {/* Info del pedido */}
               <div
                 className="flex-1 min-w-0 cursor-pointer"
                 onClick={() => onNavigate(`/businesses/${o.business_id}`)}
@@ -46,6 +58,15 @@ function WAAlerts({ orders, onNavigate }) {
                   <p className="text-xs text-gray-400 truncate">{o.comentario}</p>
                 )}
               </div>
+              {/* Botón Entregado */}
+              <button
+                disabled={marking === o.id}
+                onClick={(e) => handleDeliver(e, o.id)}
+                className="flex-shrink-0 flex flex-col items-center bg-white border border-green-400 rounded-xl px-3 py-2 active:bg-green-100 disabled:opacity-50"
+              >
+                <span className="text-lg">{marking === o.id ? '⏳' : '✓'}</span>
+                <span className="text-xs text-green-700 font-semibold">Entregado</span>
+              </button>
               {/* Botón Waze directo */}
               <a
                 href={wazeLink(o.business?.lat, o.business?.lng, o.business?.direccion)}
@@ -89,9 +110,11 @@ export default function DashboardPage() {
       const stock     = prod.data?.stock || { disponible: 0 };
       const allOrders = Array.isArray(orders.data) ? orders.data : [];
 
-      const todayOrders  = allOrders.filter((o) => new Date(o.fecha).toDateString() === hoy);
+      // Solo cuentan órdenes entregadas (no sirve contar ventas no entregadas aún)
+      const entregados   = allOrders.filter((o) => o.estado_pedido === 'entregado');
+      const todayOrders  = entregados.filter((o) => new Date(o.fecha).toDateString() === hoy);
       const ingresosHoy  = todayOrders.reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
-      const porCobrar    = allOrders
+      const porCobrar    = entregados
         .filter((o) => o.estado_pago === 'pendiente')
         .reduce((s, o) => s + (o.monto_total || o.kilos * 400), 0);
 
@@ -119,6 +142,11 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const markDelivered = useCallback(async (orderId) => {
+    await orderAPI.update(orderId, { estado_pedido: 'entregado' });
+    load(); // refresca el dashboard
+  }, [load]);
+
   useEffect(() => {
     load();
     // Refresca cada 30 s para que Teresa vea nuevos pedidos WA sin recargar
@@ -140,7 +168,7 @@ export default function DashboardPage() {
       </div>
 
       {/* === ALERTAS WA (al tope, muy visibles) === */}
-      <WAAlerts orders={data.pendientesWA} onNavigate={navigate} />
+      <WAAlerts orders={data.pendientesWA} onMarkDelivered={markDelivered} onNavigate={navigate} />
 
       {/* Tarjetas principales */}
       <div className="grid grid-cols-2 gap-3 mb-3">
