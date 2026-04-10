@@ -205,13 +205,14 @@ const update = async (req, res) => {
   }
 };
 
-// Soft-delete — solo supermaster (yoryet.danoun@gmail.com)
+// Soft-delete — supermaster o admin
 const remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (req.user.email !== SUPERMASTER_EMAIL) {
-      return res.status(403).json({ error: 'Solo el administrador principal puede eliminar negocios' });
+    const canDelete = req.user.email === SUPERMASTER_EMAIL || req.user.role === 'admin';
+    if (!canDelete) {
+      return res.status(403).json({ error: 'Solo administradores pueden eliminar negocios' });
     }
 
     const existing = await prisma.business.findUnique({ where: { id: parseInt(id) } });

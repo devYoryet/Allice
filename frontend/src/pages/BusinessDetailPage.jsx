@@ -502,6 +502,7 @@ export default function BusinessDetailPage() {
   const location = useLocation();
   const { user } = useAuth();
   const isSupermaster = user?.email === SUPERMASTER_EMAIL;
+  const canDelete     = isSupermaster || user?.role === 'admin';
 
   const openVisitOnLoad = new URLSearchParams(location.search).get('openVisit') === '1';
 
@@ -581,7 +582,7 @@ export default function BusinessDetailPage() {
         >
           ✏️
         </button>
-        {isSupermaster && (
+        {canDelete && (
           <button
             onClick={() => setShowDeleteModal(true)}
             className="w-10 h-10 flex items-center justify-center bg-red-50 rounded-xl shadow-sm text-red-600 active:bg-red-100"
@@ -818,7 +819,7 @@ export default function BusinessDetailPage() {
         />
       )}
 
-      {showDeleteModal && isSupermaster && (
+      {showDeleteModal && canDelete && (
         <ModalEliminar
           business={business}
           onClose={() => setShowDeleteModal(false)}
