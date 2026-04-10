@@ -137,6 +137,19 @@ function formatDate(dateStr) {
   });
 }
 
+function DatosIncompletosBadge({ sinTelefono, sinDireccion }) {
+  if (!sinTelefono && !sinDireccion) return null;
+  const campos = [
+    sinTelefono  && 'teléfono',
+    sinDireccion && 'dirección',
+  ].filter(Boolean).join(' y ');
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300">
+      ⚠ Sin {campos}
+    </span>
+  );
+}
+
 function BusinessCard({ business, onClick }) {
   return (
     <div
@@ -146,12 +159,27 @@ function BusinessCard({ business, onClick }) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate">{business.nombre}</h3>
-          <p className="text-sm text-gray-500 truncate mt-0.5">{business.direccion}</p>
+          <p className="text-sm text-gray-500 truncate mt-0.5">{business.direccion || '—'}</p>
           {business.persona_cargo && (
             <p className="text-xs text-gray-400 mt-0.5">👤 {business.persona_cargo}</p>
           )}
+          {business.datos_incompletos && (
+            <div className="mt-1">
+              <DatosIncompletosBadge
+                sinTelefono={business.sin_telefono}
+                sinDireccion={business.sin_direccion}
+              />
+            </div>
+          )}
         </div>
-        <VisitaBadge estado={business.estado_visita} />
+        <div className="flex flex-col items-end gap-1">
+          <VisitaBadge estado={business.estado_visita} />
+          {business.total_kilos > 0 && (
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+              {business.total_kilos.toLocaleString('es-CL')} kg
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-3 mt-3 pt-3 border-t border-gray-50">
@@ -180,6 +208,57 @@ function BusinessCard({ business, onClick }) {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PendientesDataBanner({ businesses }) {
+  const [expanded, setExpanded] = useState(false);
+  const incompletos = businesses.filter((b) => b.datos_incompletos);
+  if (incompletos.length === 0) return null;
+
+  const sinTel = incompletos.filter((b) => b.sin_telefono).length;
+  const sinDir = incompletos.filter((b) => b.sin_direccion).length;
+
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full card bg-amber-50 border-amber-300 text-left active:bg-amber-100"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">⚠️</span>
+          <div className="flex-1">
+            <p className="font-bold text-amber-800 text-sm">
+              {incompletos.length} negocio{incompletos.length !== 1 ? 's' : ''} con datos incompletos
+            </p>
+            <p className="text-xs text-amber-600">
+              {sinTel > 0 && `${sinTel} sin teléfono`}
+              {sinTel > 0 && sinDir > 0 && ' · '}
+              {sinDir > 0 && `${sinDir} sin dirección`}
+              {' · '}Toca para ver
+            </p>
+          </div>
+          <span className="text-amber-400 text-xl font-bold">{expanded ? '∨' : '›'}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="mt-1 space-y-1 pl-1">
+          {incompletos.map((b) => {
+            const campos = [
+              b.sin_telefono  && 'teléfono',
+              b.sin_direccion && 'dirección',
+            ].filter(Boolean).join(' y ');
+            return (
+              <div key={b.id} className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-xl border border-amber-200 text-sm">
+                <span className="flex-1 font-medium text-gray-800 truncate">{b.nombre}</span>
+                <span className="text-xs text-amber-700 shrink-0">sin {campos}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -255,6 +334,9 @@ export default function BusinessListPage() {
           </button>
         )}
       </form>
+
+      {/* Banner datos incompletos */}
+      <PendientesDataBanner businesses={businesses} />
 
       {/* Banner kg sin asignar */}
       {orphaned.length > 0 && (
