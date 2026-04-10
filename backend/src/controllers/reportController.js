@@ -19,7 +19,10 @@ const getSummary = async (req, res) => {
     }
 
     // ?open=1 restringe al período actual (sin cierre asignado), ignorando fechas
-    const whereBase = req.query.open === '1' ? { cierre_id: null } : { fecha: { gte: start, lte: now } };
+    // Siempre excluir pedidos de negocios eliminados
+    const whereBase = req.query.open === '1'
+      ? { cierre_id: null,               business: { deleted_at: null } }
+      : { fecha: { gte: start, lte: now }, business: { deleted_at: null } };
     const orders = await prisma.order.findMany({
       where: whereBase,
       include: { business: { select: { id: true, nombre: true } } },
@@ -88,10 +91,10 @@ const compareRanges = async (req, res) => {
 
     const [ordersA, ordersB] = await Promise.all([
       prisma.order.findMany({
-        where: { fecha: { gte: new Date(desde1), lte: new Date(hasta1) } },
+        where: { fecha: { gte: new Date(desde1), lte: new Date(hasta1) }, business: { deleted_at: null } },
       }),
       prisma.order.findMany({
-        where: { fecha: { gte: new Date(desde2), lte: new Date(hasta2) } },
+        where: { fecha: { gte: new Date(desde2), lte: new Date(hasta2) }, business: { deleted_at: null } },
       }),
     ]);
 
