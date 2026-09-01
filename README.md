@@ -81,18 +81,30 @@ export DATABASE_URL="postgresql://...neon.tech/neondb?sslmode=require"
 export DIRECT_URL="$DATABASE_URL"
 ```
 
-### Reseteo total (kilos, pedidos, visitas, cierres)
+### Reseteo de kilos y ventas
+
+Por defecto borra **solo el movimiento** —kilos cargados, pedidos, visitas y
+cierres de mes— y **conserva los contactos**: los negocios con sus teléfonos,
+direcciones y persona a cargo, el historial de WhatsApp y los usuarios con sus
+contraseñas actuales.
 
 ```bash
-npm run reset:db                              # muestra qué borraría, NO borra
-npm run reset:db -- --confirm                 # borra los datos, conserva los usuarios
-npm run reset:db -- --confirm --conservar-negocios   # conserva el catálogo de negocios
-npm run reset:db -- --confirm --incluir-usuarios     # deja la base como recién instalada
+npm run reset:db                  # muestra qué borraría, NO borra
+npm run reset:db -- --confirm     # kilos, pedidos, visitas y cierres a 0
 ```
 
-Sin `--confirm` el script solo diagnostica. Es **irreversible**: si hay algo que
-rescatar, saca respaldo antes (en Neon: *Branches* → crear una rama desde el
-punto actual).
+Opciones adicionales, todas se combinan con `--confirm`:
+
+| Opción | Efecto |
+|--------|--------|
+| `--conservar-visitas` | No borra el historial de visitas |
+| `--borrar-contactos`  | Borra también el historial de contactos de WhatsApp |
+| `--borrar-negocios`   | Borra también los negocios; se llevan por delante sus visitas, pedidos y contactos de WhatsApp (clave foránea) |
+| `--incluir-usuarios`  | Borra también los usuarios y los recrea desde el seed |
+
+Sin `--confirm` el script solo diagnostica y muestra la lista de lo que se borra
+y lo que se conserva. Es **irreversible**: si hay algo que rescatar, saca
+respaldo antes (en Neon: *Branches* → crear una rama desde el punto actual).
 
 ### Reparar el esquema si "no deja registrar cargas"
 
