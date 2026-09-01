@@ -3,6 +3,7 @@
  * Usage: node scripts/reset-admin.js <nueva_contraseña>
  */
 
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 

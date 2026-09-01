@@ -8,7 +8,7 @@ const navItems = [
   { to: '/',          label: 'Inicio',    icon: '🏠', exact: true },
   { to: '/businesses',label: 'Negocios',  icon: '🏪' },
   { to: '/map',       label: 'Mapa',      icon: '🗺️' },
-  { to: '/route',     label: 'Ruta',      icon: '🛣️' },
+  { to: '/ruta',      label: 'Ruta',      icon: '🛣️' },
   { to: '/produccion',label: 'Fábrica',   icon: '🏭' },
 ];
 

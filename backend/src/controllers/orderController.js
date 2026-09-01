@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const getByBusiness = async (req, res) => {
   try {
@@ -104,6 +102,27 @@ const update = async (req, res) => {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
 
+    // Si cambian los kilos, el precio o el IVA hay que rehacer los montos:
+    // antes solo se guardaban los kilos nuevos y monto_neto/monto_total
+    // quedaban con el valor viejo, descuadrando reportes, cobros y cierres.
+    const { precio_kg, con_iva } = req.body;
+    const montos = {};
+    if (kilos !== undefined || precio_kg !== undefined || con_iva !== undefined) {
+      const kg       = kilos     !== undefined ? parseFloat(kilos)     : existing.kilos;
+      const precio   = precio_kg !== undefined ? parseFloat(precio_kg) : existing.precio_kg;
+      const conIva   = con_iva   !== undefined ? (con_iva === true || con_iva === 'true') : existing.con_iva;
+
+      if (Number.isFinite(kg) && kg > 0 && Number.isFinite(precio) && precio > 0) {
+        montos.kilos       = kg;
+        montos.precio_kg   = precio;
+        montos.con_iva     = conIva;
+        montos.monto_neto  = Math.round(kg * precio);
+        montos.monto_total = conIva ? Math.round(kg * precio * 1.19) : Math.round(kg * precio);
+      } else {
+        return res.status(400).json({ error: 'Kilos y precio por kilo deben ser mayores a 0' });
+      }
+    }
+
     const order = await prisma.order.update({
       where: { id: parseInt(id) },
       data: {
@@ -111,8 +130,8 @@ const update = async (req, res) => {
         ...(estado_pago    &&              { estado_pago }),
         ...(estado_factura &&              { estado_factura }),
         ...(comentario     !== undefined && { comentario }),
-        ...(kilos          &&              { kilos: parseFloat(kilos) }),
         ...(business_id    &&              { business_id: parseInt(business_id) }),
+        ...montos,
       },
       include: {
         business: { select: { id: true, nombre: true, lat: true, lng: true, direccion: true } },

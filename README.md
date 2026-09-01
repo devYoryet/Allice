@@ -4,10 +4,11 @@ Aplicación web full-stack para gestionar visitas y ventas a negocios (almacenes
 
 ## Stack técnico
 
-- **Backend**: Node.js + Express + Prisma ORM + SQLite
+- **Backend**: Node.js + Express + Prisma ORM
 - **Frontend**: React + Vite + TailwindCSS + React Leaflet
 - **Auth**: JWT
-- **DB**: SQLite (archivo local `backend/dev.db`)
+- **DB**: PostgreSQL (Neon en producción, `backend/.env` → `DATABASE_URL`)
+- **Deploy**: Vercel (`api/index.js` como función serverless + frontend estático)
 
 ---
 
@@ -20,19 +21,18 @@ Aplicación web full-stack para gestionar visitas y ventas a negocios (almacenes
 ### 2. Instalación completa (primera vez)
 
 ```bash
-# Instalar todas las dependencias
-npm run install:all
+# Instalar dependencias (raíz + frontend)
+npm install
+npm install --prefix frontend
 
-# Aplicar migraciones (crea la base de datos)
+# Copiar la plantilla de variables de entorno y completar DATABASE_URL
+cp backend/.env.example backend/.env
+
+# Aplicar migraciones (crea las tablas)
 npm run migrate
 
-# Crear usuario admin y datos de ejemplo
+# Crear los usuarios base
 npm run seed
-```
-
-O en un solo comando:
-```bash
-npm run setup
 ```
 
 ### 3. Correr en desarrollo
@@ -46,10 +46,11 @@ npm run dev
 
 ### 4. Credenciales iniciales
 
-| Rol       | Email              | Contraseña |
-|-----------|--------------------|------------|
-| Admin     | admin@tere.com     | admin123   |
-| Vendedor  | tere@tere.com      | tere123    |
+| Rol        | Email              | Contraseña  |
+|------------|--------------------|-------------|
+| Admin      | admin@allice.cl    | admin123    |
+| Vendedor   | teresa@allice.cl   | tere123     |
+| Producción | eduardo@allice.cl  | eduardo123  |
 
 ---
 
@@ -69,6 +70,65 @@ npm run start
 El backend sirve el frontend compilado en modo producción desde `http://localhost:3001`.
 
 ---
+
+## Mantenimiento de la base de datos
+
+Todos estos comandos leen `DATABASE_URL` de `backend/.env`. Para apuntar a
+producción, exporta la variable antes de ejecutarlos:
+
+```bash
+export DATABASE_URL="postgresql://...neon.tech/neondb?sslmode=require"
+export DIRECT_URL="$DATABASE_URL"
+```
+
+### Reseteo de kilos y ventas
+
+Por defecto borra **solo el movimiento** —kilos cargados, pedidos, visitas y
+cierres de mes— y **conserva los contactos**: los negocios con sus teléfonos,
+direcciones y persona a cargo, el historial de WhatsApp y los usuarios con sus
+contraseñas actuales.
+
+```bash
+npm run reset:db                  # muestra qué borraría, NO borra
+npm run reset:db -- --confirm     # kilos, pedidos, visitas y cierres a 0
+```
+
+Opciones adicionales, todas se combinan con `--confirm`:
+
+| Opción | Efecto |
+|--------|--------|
+| `--conservar-visitas` | No borra el historial de visitas |
+| `--borrar-contactos`  | Borra también el historial de contactos de WhatsApp |
+| `--borrar-negocios`   | Borra también los negocios; se llevan por delante sus visitas, pedidos y contactos de WhatsApp (clave foránea) |
+| `--incluir-usuarios`  | Borra también los usuarios y los recrea desde el seed |
+
+Sin `--confirm` el script solo diagnostica y muestra la lista de lo que se borra
+y lo que se conserva. Es **irreversible**: si hay algo que rescatar, saca
+respaldo antes (en Neon: *Branches* → crear una rama desde el punto actual).
+
+### Reparar el esquema si "no deja registrar cargas"
+
+Si al registrar una carga a congeladora aparece *"La base de datos tiene el
+esquema desactualizado"*, significa que quedaron migraciones sin aplicar:
+
+```bash
+npm run repair:schema -- --dry-run   # solo diagnostica
+npm run repair:schema                # normaliza LoteProduccion y prueba un INSERT
+```
+
+Si además `prisma migrate deploy` falla porque una migración quedó en estado
+*failed*, márcala como resuelta y vuelve a desplegar:
+
+```bash
+npx prisma migrate resolve --applied 20260315000000_add_produccion_pricing
+npx prisma migrate deploy
+```
+
+### Cambiar la contraseña del admin
+
+```bash
+node backend/scripts/reset-admin.js <nueva_contraseña>
+```
 
 ## Estructura del proyecto
 

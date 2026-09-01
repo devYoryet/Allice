@@ -8,6 +8,7 @@ const CUOTA        = 253_000;  // cuota mensual máquina
 const COSTO_LUZ    = 70_000;   // luz mensual estimada
 const COSTO_AGUA   = 10_000;   // agua mensual estimada
 const COSTO_BOLSAS = 72_000;   // bolsas mensual (1 800 bolsas)
+const MAX_KILOS    = 3_000;    // tope por carga, igual al del backend
 
 // Hitos de break-even (kg/mes necesarios para cubrir cada nivel de costos)
 const METAS = [
@@ -93,15 +94,20 @@ function ModalCarga({ onClose, onSuccess }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    const kg = parseFloat(kilos);
-    if (!kg || kg <= 0) { setError('Ingresa los kilos cargados'); return; }
-    if (kg > 3_000)     { setError('Máximo 3,000 kg por carga'); return; }
+    // Se acepta coma decimal: en el teclado móvil es lo que sale por defecto.
+    const kg = parseFloat(String(kilos).replace(',', '.'));
+    if (!Number.isFinite(kg) || kg <= 0) { setError('Ingresa los kilos cargados'); return; }
+    if (kg > MAX_KILOS)  { setError(`Máximo ${fmt(MAX_KILOS)} kg por carga`); return; }
+    setError('');
     setLoading(true);
     try {
       await produccionAPI.create({ kilos: kg, horas_produccion: horas, notas: notas || null });
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al registrar');
+      setError(
+        err.response?.data?.error ||
+        (err.response ? `Error ${err.response.status} al registrar` : 'Sin conexión con el servidor')
+      );
     } finally {
       setLoading(false);
     }
@@ -125,10 +131,13 @@ function ModalCarga({ onClose, onSuccess }) {
           {/* Kilos */}
           <div>
             <label className="label">Kilos cargados *</label>
+            {/* step="any": con un paso fijo el navegador rechaza en silencio
+                valores como 200.25 y el botón parece no hacer nada. */}
             <input
-              type="number" min="1" max="3000" step="0.5"
+              type="number" min="0.5" max={MAX_KILOS} step="any" required
+              inputMode="decimal"
               className="input-field text-2xl font-bold"
-              placeholder="ej: 800"
+              placeholder="ej: 200"
               value={kilos}
               onChange={(e) => setKilos(e.target.value)}
               autoFocus

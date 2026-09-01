@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // GET /api/businesses/:businessId/whatsapp — historial de contactos WA
 const getByBusiness = async (req, res) => {
