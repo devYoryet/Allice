@@ -48,13 +48,35 @@ const getAll = async (req, res) => {
     const now       = new Date();
     const mesInicio = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [lotes, totCargado, totVendido, mesCargado, mesVendido] = await Promise.all([
+    // El stock solo puede calcularse desde que se empezó a registrar cargas.
+    // Antes de la primera carga la app no sabe qué entró a la congeladora, así
+    // que restar esas ventas da un número inventado: es lo que hacía aparecer
+    // 72 kg de stock cuando se habían cargado 800 kg y las 728 kg vendidas eran
+    // de meses anteriores, cuando registrar cargas estaba roto.
+    const primeraCarga = await prisma.loteProduccion.findFirst({
+      orderBy: { fecha: 'asc' },
+      select:  { fecha: true },
+    });
+    const desde = primeraCarga?.fecha || null;
+    const ventasDelInventario = desde
+      ? { ...VENTAS_VIGENTES, fecha: { gte: desde } }
+      : VENTAS_VIGENTES;
+
+    const [lotes, totCargado, totVendido, ventasPrevias, mesCargado, mesVendido] = await Promise.all([
       prisma.loteProduccion.findMany({
         include: { user: { select: { id: true, name: true } } },
         orderBy: { fecha: 'desc' },
       }),
       prisma.loteProduccion.aggregate({ _sum: { kilos: true } }),
-      prisma.order.aggregate({ where: VENTAS_VIGENTES, _sum: { kilos: true } }),
+      prisma.order.aggregate({ where: ventasDelInventario, _sum: { kilos: true } }),
+      // Ventas anteriores a la primera carga: no descuentan stock, pero se
+      // informan para que el número no parezca salido de la nada.
+      desde
+        ? prisma.order.aggregate({
+            where: { ...VENTAS_VIGENTES, fecha: { lt: desde } },
+            _sum:  { kilos: true },
+          })
+        : Promise.resolve({ _sum: { kilos: 0 } }),
       prisma.loteProduccion.aggregate({
         where:  { fecha: { gte: mesInicio } },
         _sum:   { kilos: true },
@@ -74,6 +96,9 @@ const getAll = async (req, res) => {
         disponible:           Math.max(0, kilos_cargados_total - kilos_vendidos_total),
         kilos_cargados_total,
         kilos_vendidos_total,
+        // Desde cuándo se cuenta el inventario, y qué quedó fuera del cálculo.
+        desde,
+        kilos_vendidos_antes: ventasPrevias._sum.kilos || 0,
       },
       mes: {
         kilos_cargados: mesCargado._sum.kilos || 0,

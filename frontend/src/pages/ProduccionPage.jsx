@@ -38,7 +38,11 @@ function BarraBreakeven({ kgMes }) {
   return (
     <div className="card mb-4">
       <div className="flex justify-between items-center mb-1">
-        <p className="text-xs font-semibold text-gray-600">Progreso mensual · ventas</p>
+        {/* Con el nombre del mes queda claro por qué puede marcar 0 kg aunque el
+            "vendido total" sea alto: recién empezado el mes no hay ventas aún. */}
+        <p className="text-xs font-semibold text-gray-600">
+          Ventas de {new Date().toLocaleDateString('es-CL', { month: 'long' })}
+        </p>
         <p className="text-xs font-bold text-gray-700">{fmt(kgMes)} kg vendidos</p>
       </div>
 
@@ -265,9 +269,29 @@ export default function ProduccionPage() {
           </div>
         </div>
         <div className="flex gap-4 text-xs text-blue-700/70">
-          <span>↑ {fmt(stock.kilos_cargados_total)} kg cargado total</span>
-          <span>↓ {fmt(stock.kilos_vendidos_total)} kg vendido total</span>
+          <span>↑ {fmt(stock.kilos_cargados_total)} kg cargado</span>
+          <span>↓ {fmt(stock.kilos_vendidos_total)} kg vendido</span>
         </div>
+        {stock.desde && (
+          <p className="text-xs text-blue-700/60 mt-1">
+            Inventario contado desde la primera carga, el {fmtDate(stock.desde)}
+          </p>
+        )}
+
+        {/* Ventas anteriores a la primera carga: no descuentan stock, porque la
+            app no sabe qué había en la congeladora antes de empezar a contar.
+            Sin este aviso el número parece salido de la nada. */}
+        {stock.kilos_vendidos_antes > 0 && (
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p className="text-xs font-bold text-amber-800">
+              {fmt(stock.kilos_vendidos_antes)} kg vendidos antes de la primera carga
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              No se descuentan del stock: son de cuando todavía no se registraban
+              cargas, así que no hay con qué compararlos.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Referencia capacidad máquina ── */}

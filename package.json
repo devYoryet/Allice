@@ -12,6 +12,7 @@
     "migrate": "prisma migrate dev",
     "migrate:prod": "prisma migrate deploy",
     "seed": "node backend/prisma/seed.js",
+    "inventario": "node backend/scripts/inventario.js",
     "repair:schema": "node backend/scripts/repair-schema.js",
     "reset:db": "node backend/scripts/reset-db.js",
     "generate": "prisma generate",
