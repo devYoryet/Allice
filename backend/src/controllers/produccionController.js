@@ -53,7 +53,13 @@ const getAll = async (req, res) => {
     // que restar esas ventas da un número inventado: es lo que hacía aparecer
     // 72 kg de stock cuando se habían cargado 800 kg y las 728 kg vendidas eran
     // de meses anteriores, cuando registrar cargas estaba roto.
+    //
+    // Se exige kilos > 0 porque las bases que venían del esquema viejo tienen
+    // filas huérfanas de 0 kg (la columna `kilos` se añadió con DEFAULT 0).
+    // Una carga de 0 kg no aporta inventario, pero su fecha antigua arrastraba
+    // el inicio del cálculo meses atrás y volvía a descontar todas las ventas.
     const primeraCarga = await prisma.loteProduccion.findFirst({
+      where:   { kilos: { gt: 0 } },
       orderBy: { fecha: 'asc' },
       select:  { fecha: true },
     });

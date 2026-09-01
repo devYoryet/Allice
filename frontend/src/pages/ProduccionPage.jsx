@@ -88,25 +88,39 @@ function BarraBreakeven({ kgMes }) {
   );
 }
 
+// Ventana en que dos cargas iguales se consideran un posible doble registro.
+const MINUTOS_DUPLICADO = 30;
+
 // ── Modal: registrar carga a congeladora ───────────────────────────────────
-function ModalCarga({ onClose, onSuccess }) {
+function ModalCarga({ onClose, onSuccess, lotes, stockActual }) {
   const [kilos,   setKilos]   = useState('');
   const [horas,   setHoras]   = useState(15);
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+  // Confirmación posterior: sin esto no queda claro que la carga se guardó,
+  // y se vuelve a apretar el botón "por si acaso".
+  const [guardado, setGuardado] = useState(null);
+  // Aviso previo cuando ya hay una carga igual reciente, para no duplicar.
+  const [avisoDuplicado, setAvisoDuplicado] = useState(null);
 
-  const submit = async (e) => {
-    e.preventDefault();
-    // Se acepta coma decimal: en el teclado móvil es lo que sale por defecto.
-    const kg = parseFloat(String(kilos).replace(',', '.'));
-    if (!Number.isFinite(kg) || kg <= 0) { setError('Ingresa los kilos cargados'); return; }
-    if (kg > MAX_KILOS)  { setError(`Máximo ${fmt(MAX_KILOS)} kg por carga`); return; }
+  /** Busca una carga de los mismos kilos registrada hace poco. */
+  const buscarDuplicado = (kg) => {
+    const limite = Date.now() - MINUTOS_DUPLICADO * 60 * 1000;
+    return (lotes || []).find(
+      (l) => l.kilos === kg && new Date(l.fecha).getTime() >= limite
+    );
+  };
+
+  const registrar = async (kg) => {
     setError('');
+    setAvisoDuplicado(null);
     setLoading(true);
     try {
-      await produccionAPI.create({ kilos: kg, horas_produccion: horas, notas: notas || null });
-      onSuccess();
+      const { data } = await produccionAPI.create({
+        kilos: kg, horas_produccion: horas, notas: notas || null,
+      });
+      setGuardado(data);
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -116,6 +130,118 @@ function ModalCarga({ onClose, onSuccess }) {
       setLoading(false);
     }
   };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    // Se acepta coma decimal: en el teclado móvil es lo que sale por defecto.
+    const kg = parseFloat(String(kilos).replace(',', '.'));
+    if (!Number.isFinite(kg) || kg <= 0) { setError('Ingresa los kilos cargados'); return; }
+    if (kg > MAX_KILOS)  { setError(`Máximo ${fmt(MAX_KILOS)} kg por carga`); return; }
+
+    const repetida = buscarDuplicado(kg);
+    if (repetida && !avisoDuplicado) { setAvisoDuplicado({ lote: repetida, kg }); return; }
+
+    await registrar(kg);
+  };
+
+  // ── Pantalla de confirmación ──────────────────────────────────────────────
+  if (guardado) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={onSuccess}>
+        <div
+          className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4 text-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-4xl">
+            ✅
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Carga registrada</h3>
+            <p className="text-sm text-gray-500 mt-1">Ya quedó guardada en el historial.</p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Kilos agregados</span>
+              <span className="font-black text-blue-700">+{fmt(guardado.kilos)} kg</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Horas de producción</span>
+              <span className="font-semibold text-gray-700">{guardado.horas_produccion}h</span>
+            </div>
+            <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
+              <span className="text-gray-600">Stock en congeladora</span>
+              <span className="font-black text-green-700">
+                {fmt(stockActual + guardado.kilos)} kg
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Valor de la carga</span>
+              <span className="font-semibold text-gray-700">${fmt(guardado.kilos * PRECIO_KG)}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-400">
+            Registrada el {fmtDate(guardado.fecha)} por {guardado.user?.name}
+          </p>
+
+          <button onClick={onSuccess} className="btn-primary">Listo</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Aviso de posible doble registro ───────────────────────────────────────
+  if (avisoDuplicado) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={onClose}>
+        <div
+          className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 space-y-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">¿Ya la habías registrado?</h3>
+              <p className="text-sm text-amber-700 font-semibold">
+                Hay una carga igual hace poco
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-sm font-bold text-amber-900">
+              {fmt(avisoDuplicado.lote.kilos)} kg · {avisoDuplicado.lote.horas_produccion}h
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {fmtDate(avisoDuplicado.lote.fecha)} · por {avisoDuplicado.lote.user?.name}
+            </p>
+          </div>
+
+          <p className="text-sm text-gray-600">
+            Si es otra carga distinta, continúa. Si solo estabas reintentando porque
+            no viste confirmación, cancela: la primera ya quedó guardada.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={onClose} className="btn-secondary">
+              Cancelar
+            </button>
+            <button
+              onClick={() => registrar(avisoDuplicado.kg)}
+              disabled={loading}
+              className="btn-primary"
+              style={{ background: 'linear-gradient(135deg, #b45309, #d97706)' }}
+            >
+              {loading ? 'Registrando...' : 'Sí, es otra carga'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={onClose}>
@@ -366,6 +492,8 @@ export default function ProduccionPage() {
       {/* Modal registrar carga */}
       {showModal && (
         <ModalCarga
+          lotes={lotes}
+          stockActual={stock.disponible}
           onClose={() => setShowModal(false)}
           onSuccess={() => { setShowModal(false); load(); }}
         />
