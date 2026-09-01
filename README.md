@@ -106,22 +106,32 @@ Sin `--confirm` el script solo diagnostica y muestra la lista de lo que se borra
 y lo que se conserva. Es **irreversible**: si hay algo que rescatar, saca
 respaldo antes (en Neon: *Branches* → crear una rama desde el punto actual).
 
-### Reparar el esquema si "no deja registrar cargas"
+### Preparación de la base en cada deploy
+
+`vercel-build` no llama a `prisma migrate deploy` directamente, sino a
+`backend/scripts/deploy-db.js`, que hace cuatro cosas en orden:
+
+1. **Destraba migraciones fallidas.** Si una migración queda en estado *failed*,
+   Prisma aborta con `P3009` y no aplica ninguna de las siguientes, así que el
+   build entero se cae. El script marca como aplicadas solo las migraciones de
+   una lista blanca de idempotentes (las escritas con `IF NOT EXISTS` / `DO $$`).
+   Cualquier otra migración fallida **detiene el deploy**: destrabar el init a
+   ciegas escondería un problema real.
+2. `prisma migrate deploy`.
+3. **Red de seguridad**: reaplica la reparación de `LoteProduccion`, por si una
+   migración quedó marcada como aplicada sin haber corrido de verdad.
+4. Seed de usuarios base.
+
+Es idempotente: en una base sana no cambia nada.
+
+### Reparar el esquema a mano
 
 Si al registrar una carga a congeladora aparece *"La base de datos tiene el
-esquema desactualizado"*, significa que quedaron migraciones sin aplicar:
+esquema desactualizado"* y no quieres esperar a un deploy:
 
 ```bash
 npm run repair:schema -- --dry-run   # solo diagnostica
 npm run repair:schema                # normaliza LoteProduccion y prueba un INSERT
-```
-
-Si además `prisma migrate deploy` falla porque una migración quedó en estado
-*failed*, márcala como resuelta y vuelve a desplegar:
-
-```bash
-npx prisma migrate resolve --applied 20260315000000_add_produccion_pricing
-npx prisma migrate deploy
 ```
 
 ### Cambiar la contraseña del admin
