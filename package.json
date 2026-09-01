@@ -12,6 +12,8 @@
     "migrate": "prisma migrate dev",
     "migrate:prod": "prisma migrate deploy",
     "seed": "node backend/prisma/seed.js",
+    "repair:schema": "node backend/scripts/repair-schema.js",
+    "reset:db": "node backend/scripts/reset-db.js",
     "generate": "prisma generate",
     "build": "npm run build --prefix frontend",
     "start": "node backend/src/index.js",
